@@ -1,0 +1,41 @@
+name: Extract ZIP and Setup Repo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  unzip-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract ZIP File
+        run: |
+          mkdir -p temp_extracted
+          unzip -q GTOOL-X-main.zip -d temp_extracted/
+          
+          # Zip ke andar agar ek extra folder ho toh contents bahar nikalna
+          if [ -d "temp_extracted/GTOOL-X-main" ]; then
+            cp -r temp_extracted/GTOOL-X-main/* . 2>/dev/null || true
+            cp -r temp_extracted/GTOOL-X-main/.* . 2>/dev/null || true
+          else
+            cp -r temp_extracted/* . 2>/dev/null || true
+            cp -r temp_extracted/.* . 2>/dev/null || true
+          fi
+          
+          # Clean temporary files and delete the zip file
+          rm -rf temp_extracted
+          rm -f GTOOL-X-main.zip
+
+      - name: Commit and Push Extracted Files
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: unzip and extract project files to root" || echo "No changes to commit"
+          git push origin main
+          
