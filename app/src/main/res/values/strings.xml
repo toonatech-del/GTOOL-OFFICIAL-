@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">GTOOL X</string>
+    <string name="greeting_prefix">Hi, %s</string>
+    <string name="referenced_source_excerpt">Referenced Source Excerpt</string>
+    <string name="default_user_name">User</string>
+    <string name="default_member_name">Member</string>
+    <string name="notifications_content_description">Notifications</string>
+    <string name="search_results_title">Search Results</string>
+    <string name="offline_fts4_index_match">Offline FTS4 index match for \"%s\"</string>
+    <string name="no_matching_memory_found">No matching memory found</string>
+    <string name="no_matching_results_desc">No notes, PDFs, or images matched \"%s\" in on-device storage.</string>
+    <string name="item_type_note">Note</string>
+    <string name="item_type_image">Image</string>
+    <string name="item_type_audio">Audio</string>
+    <string name="item_type_memory">Memory</string>
+    <string name="open_content_description">Open</string>
+    <string name="preview_content_description">Preview of %s</string>
+    <string name="add_memory_title">Add Memory</string>
+    <string name="subtitle_rich_text">Rich text &amp; markdown</string>
+    <string name="subtitle_gallery_photo">Gallery photo &amp; OCR</string>
+    <string name="subtitle_auto_crop">Auto-crop &amp; enhance</string>
+</resources>

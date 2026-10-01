@@ -1,0 +1,8 @@
+/build
+.env*
+*.keystore
+*.jks
+
+# Whitelist static debug and release keystores
+!debug.keystore
+!release.keystore

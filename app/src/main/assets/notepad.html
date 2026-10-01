@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GTOOL X Notepad</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #0e0f14;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 16px 24px 16px;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background glow matching GTOOL X */
+    .ambient-glow {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255, 184, 126, 0.12) 0%, rgba(255, 149, 0, 0.05) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Top Bar Header */
+    .header {
+      display: flex;
+      align-items: center;
+      padding: 8px 4px 16px 4px;
+    }
+
+    .brand-gt {
+      font-family: 'Brush Script MT', cursive, sans-serif;
+      font-weight: 800;
+      font-size: 26px;
+      background: linear-gradient(90deg, #00e5ff 0%, #ff2d55 50%, #ff9500 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-right: 8px;
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+    }
+
+    /* Title Input */
+    .title-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      padding: 6px 0;
+      margin-bottom: 14px;
+      letter-spacing: -0.5px;
+    }
+
+    .title-input::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 700;
+    }
+
+    /* Rich-Text Formatting Toolbar */
+    .toolbar-container {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 20px;
+      padding: 8px 10px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding: 2px 0;
+    }
+
+    .toolbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tool-btn {
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: all 0.15s ease;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .tool-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .tool-btn.italic-text {
+      font-style: italic;
+      font-family: Georgia, serif;
+      font-size: 16px;
+    }
+
+    /* Active Highlighted State with Orange Tint */
+    .tool-btn.active {
+      background: rgba(255, 184, 126, 0.28) !important;
+      border-color: #ffb87e !important;
+      color: #ffb87e !important;
+      box-shadow: 0 0 10px rgba(255, 184, 126, 0.35);
+    }
+
+    .tool-btn:active {
+      transform: scale(0.94);
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    /* Editor Card Area */
+    .editor-card {
+      flex: 1;
+      min-height: 280px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 24px;
+      padding: 18px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-content {
+      flex: 1;
+      width: 100%;
+      outline: none;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #ffffff;
+      min-height: 240px;
+      word-break: break-word;
+    }
+
+    /* Placeholder when empty */
+    .editor-content:empty:before {
+      content: attr(data-placeholder);
+      color: rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Rich text elements inside editor */
+    .editor-content b, .editor-content strong {
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .editor-content i, .editor-content em {
+      font-style: italic;
+      color: #ffffff;
+    }
+
+    .editor-content ul, .editor-content ol {
+      padding-left: 24px;
+      margin: 8px 0;
+    }
+
+    .editor-content li {
+      margin-bottom: 4px;
+    }
+
+    .editor-content blockquote {
+      border-left: 3px solid #ffb87e;
+      padding-left: 12px;
+      margin: 10px 0;
+      color: rgba(255, 255, 255, 0.85);
+      font-style: italic;
+      background: rgba(255, 184, 126, 0.06);
+      border-radius: 0 8px 8px 0;
+      padding: 6px 12px;
+    }
+
+    /* Interactive Checkbox Items */
+    .todo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0;
+    }
+
+    .todo-check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .todo-check input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+      border-radius: 5px;
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
+    }
+
+    .todo-check input[type="checkbox"]:checked {
+      background: #ffb87e;
+      border-color: #ffb87e;
+    }
+
+    .todo-check input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 4px;
+      height: 8px;
+      border: solid #2e1a0c;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .todo-row.completed .todo-content {
+      text-decoration: line-through;
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .todo-content {
+      flex: 1;
+      outline: none;
+    }
+
+    /* Bottom Deck */
+    .bottom-deck {
+      background: rgba(26, 24, 34, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 28px;
+      padding: 16px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Save Note Button - Orange / Peach Theme */
+    .save-btn {
+      width: 100%;
+      border-radius: 9999px;
+      background: linear-gradient(135deg, #ffd194 0%, #d19153 100%);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      color: #2e1a0c;
+      font-size: 17px;
+      font-weight: 800;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: transform 0.1s, filter 0.15s;
+    }
+
+    .save-btn:active {
+      transform: scale(0.98);
+      filter: brightness(0.95);
+    }
+
+    .save-btn svg {
+      width: 20px;
+      height: 20px;
+      stroke: #2e1a0c;
+      stroke-width: 2.5;
+      fill: none;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(30, 30, 40, 0.95);
+      border: 1px solid rgba(255, 184, 126, 0.4);
+      color: #ffffff;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 100;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <span class="brand-gt">GT</span>
+      <span class="header-title">Notepad</span>
+    </div>
+
+    <!-- Note Title Input -->
+    <input type="text" id="noteTitle" class="title-input" placeholder="Note Title..." autocomplete="off">
+
+    <!-- Rich-Text Formatting Toolbar -->
+    <div class="toolbar-container">
+      <div class="toolbar">
+        <!-- T (Clear / Normal Text) -->
+        <button type="button" class="tool-btn" id="btnFormatClear" title="Clear Formatting" onmousedown="handleToolbarMouseDown(event)" onclick="handleClearFormat()">
+          T
+        </button>
+
+        <!-- B (Bold) -->
+        <button type="button" class="tool-btn" id="btnBold" title="Bold" onmousedown="handleToolbarMouseDown(event)" onclick="handleToggleBold()">
+          B
+        </button>
+
+        <!-- I (Italic) -->
+        <button type="button" class="tool-btn italic-text" id="btnItalic" title="Italic" onmousedown="handleToolbarMouseDown(event)" onclick="handleToggleItalic()">
+          I
+        </button>
+
+        <!-- Bullet List -->
+        <button type="button" class="tool-btn" id="btnBullet" title="Bullet List" onmousedown="handleToolbarMouseDown(event)" onclick="handleCommand('insertUnorderedList')">
+          <svg viewBox="0 0 24 24"><path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/></svg>
+        </button>
+
+        <!-- Numbered List -->
+        <button type="button" class="tool-btn" id="btnNumber" title="Numbered List" onmousedown="handleToolbarMouseDown(event)" onclick="handleCommand('insertOrderedList')">
+          <svg viewBox="0 0 24 24"><path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/></svg>
+        </button>
+
+        <!-- Checkbox -->
+        <button type="button" class="tool-btn" id="btnCheckbox" title="Checkbox" onmousedown="handleToolbarMouseDown(event)" onclick="handleInsertCheckbox()">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+        </button>
+
+        <!-- Quote -->
+        <button type="button" class="tool-btn" id="btnQuote" title="Quote" onmousedown="handleToolbarMouseDown(event)" onclick="handleToggleQuote()">
+          <svg viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Expansive Editable Textarea Card -->
+    <div class="editor-card" onclick="focusEditor()">
+      <div id="editor" class="editor-content" contenteditable="true" data-placeholder="Write your note here... Read and edit full rich-text content freely." spellcheck="true"></div>
+    </div>
+
+    <!-- Bottom Action Deck -->
+    <div class="bottom-deck">
+      <button type="button" class="save-btn" onclick="saveNote()">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>Save Note</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Note saved successfully! ✨</div>
+
+  <script>
+    const editor = document.getElementById('editor');
+    const noteTitle = document.getElementById('noteTitle');
+    const btnBold = document.getElementById('btnBold');
+    const btnItalic = document.getElementById('btnItalic');
+    const btnBullet = document.getElementById('btnBullet');
+    const btnNumber = document.getElementById('btnNumber');
+    const btnQuote = document.getElementById('btnQuote');
+    const toast = document.getElementById('toast');
+
+    // Prevent button click from stealing focus / losing caret selection from editor
+    function handleToolbarMouseDown(e) {
+      e.preventDefault();
+    }
+
+    function focusEditor() {
+      if (document.activeElement !== editor) {
+        editor.focus();
+      }
+    }
+
+    // Toggle Bold formatting
+    function handleToggleBold() {
+      editor.focus();
+      document.execCommand('bold', false, null);
+      updateToolbarState();
+    }
+
+    // Toggle Italic formatting
+    function handleToggleItalic() {
+      editor.focus();
+      document.execCommand('italic', false, null);
+      updateToolbarState();
+    }
+
+    // Generic execCommand wrapper
+    function handleCommand(cmd, val = null) {
+      editor.focus();
+      document.execCommand(cmd, false, val);
+      updateToolbarState();
+    }
+
+    // Clear formatting (T button)
+    function handleClearFormat() {
+      editor.focus();
+      document.execCommand('removeFormat', false, null);
+      document.execCommand('formatBlock', false, '<div>');
+      updateToolbarState();
+    }
+
+    // Toggle Blockquote
+    function handleToggleQuote() {
+      editor.focus();
+      if (isInsideTag('BLOCKQUOTE')) {
+        document.execCommand('formatBlock', false, '<div>');
+      } else {
+        document.execCommand('formatBlock', false, '<blockquote>');
+      }
+      updateToolbarState();
+    }
+
+    // Insert interactive checkbox todo row
+    function handleInsertCheckbox() {
+      editor.focus();
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+
+      const range = selection.getRangeAt(0);
+      const todoRow = document.createElement('div');
+      todoRow.className = 'todo-row';
+      todoRow.innerHTML = '<span class="todo-check" contenteditable="false"><input type="checkbox" onchange="this.closest(\'.todo-row\').classList.toggle(\'completed\', this.checked)"></span><span class="todo-content">&nbsp;</span>';
+
+      range.deleteContents();
+      range.insertNode(todoRow);
+
+      // Move caret to content area of checkbox
+      const contentSpan = todoRow.querySelector('.todo-content');
+      const newRange = document.createRange();
+      newRange.setStart(contentSpan, 0);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+
+      updateToolbarState();
+    }
+
+    // Helper to check if selection is inside a specific HTML tag
+    function isInsideTag(tagName) {
+      let node = window.getSelection().anchorNode;
+      while (node && node !== editor && node !== document.body) {
+        if (node.nodeName === tagName) return true;
+        node = node.parentNode;
+      }
+      return false;
+    }
+
+    // Update active highlight state for all toolbar buttons
+    function updateToolbarState() {
+      try {
+        const isBold = document.queryCommandState('bold');
+        btnBold.classList.toggle('active', !!isBold);
+
+        const isItalic = document.queryCommandState('italic');
+        btnItalic.classList.toggle('active', !!isItalic);
+
+        const isBullet = document.queryCommandState('insertUnorderedList');
+        btnBullet.classList.toggle('active', !!isBullet);
+
+        const isNumber = document.queryCommandState('insertOrderedList');
+        btnNumber.classList.toggle('active', !!isNumber);
+
+        const isQuote = isInsideTag('BLOCKQUOTE');
+        btnQuote.classList.toggle('active', !!isQuote);
+      } catch (e) {
+        // Safe fallback for edge environments
+      }
+    }
+
+    // Listen to selection & typing events to reflect button active states in real-time
+    document.addEventListener('selectionchange', () => {
+      if (document.activeElement === editor || editor.contains(document.activeElement)) {
+        updateToolbarState();
+      }
+    });
+
+    editor.addEventListener('keyup', updateToolbarState);
+    editor.addEventListener('mouseup', updateToolbarState);
+    editor.addEventListener('touchend', updateToolbarState);
+    editor.addEventListener('input', updateToolbarState);
+
+    // Save Note logic
+    function saveNote() {
+      const title = noteTitle.value.trim() || 'Untitled Note';
+      const contentHtml = editor.innerHTML;
+      const contentText = editor.innerText.trim();
+
+      // If running inside Android WebView bridge
+      if (window.Android && window.Android.saveNote) {
+        window.Android.saveNote(title, contentText, contentHtml);
+        return;
+      }
+
+      // Local storage persistence
+      const noteData = {
+        title: title,
+        html: contentHtml,
+        text: contentText,
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        localStorage.setItem('gtoolx_last_note', JSON.stringify(noteData));
+      } catch (e) {}
+
+      showToast("Note saved successfully! ✨");
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    // Restore previous note if present
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const saved = localStorage.getItem('gtoolx_last_note');
+        if (saved) {
+          const data = JSON.parse(saved);
+          if (data.title && !noteTitle.value) noteTitle.value = data.title;
+          if (data.html && !editor.innerHTML.trim()) editor.innerHTML = data.html;
+        }
+      } catch (e) {}
+    });
+  </script>
+</body>
+</html>

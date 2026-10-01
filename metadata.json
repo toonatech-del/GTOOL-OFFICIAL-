@@ -1,0 +1,6 @@
+{
+  "name": "GTOOL X",
+  "description": "Warm dark frosted glassmorphism workspace with AI search, smart document management, and offline sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
