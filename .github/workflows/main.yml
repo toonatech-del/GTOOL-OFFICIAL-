@@ -1,6 +1,7 @@
 name: Extract ZIP and Setup Repo
 
 on:
+  push:
   workflow_dispatch:
 
 jobs:
@@ -8,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      workflows: write
 
     steps:
       - name: Checkout Repository
@@ -19,14 +19,20 @@ jobs:
           mkdir -p temp_extracted
           unzip -q GTOOL-X-main.zip -d temp_extracted/
           
+          # Target folder detect karein
+          SRC_DIR="temp_extracted"
           if [ -d "temp_extracted/GTOOL-X-main" ]; then
-            cp -r temp_extracted/GTOOL-X-main/* . 2>/dev/null || true
-            cp -r temp_extracted/GTOOL-X-main/.* . 2>/dev/null || true
-          else
-            cp -r temp_extracted/* . 2>/dev/null || true
-            cp -r temp_extracted/.* . 2>/dev/null || true
+            SRC_DIR="temp_extracted/GTOOL-X-main"
           fi
-          
+
+          # Agar zip me .github/workflows hai toh usse hata dete hain taaki permission error na aaye
+          rm -rf "$SRC_DIR/.github" || true
+
+          # Files copy karein
+          cp -r $SRC_DIR/* . 2>/dev/null || true
+          cp -r $SRC_DIR/.* . 2>/dev/null || true
+
+          # Cleanup
           rm -rf temp_extracted
           rm -f GTOOL-X-main.zip
 
@@ -37,4 +43,3 @@ jobs:
           git add -A
           git commit -m "chore: unzip and extract project files to root" || echo "No changes to commit"
           git push origin main
-          
