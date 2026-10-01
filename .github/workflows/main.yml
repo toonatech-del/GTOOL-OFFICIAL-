@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      workflows: write
 
     steps:
       - name: Checkout Repository
@@ -18,7 +19,6 @@ jobs:
           mkdir -p temp_extracted
           unzip -q GTOOL-X-main.zip -d temp_extracted/
           
-          # Zip ke andar agar ek extra folder ho toh contents bahar nikalna
           if [ -d "temp_extracted/GTOOL-X-main" ]; then
             cp -r temp_extracted/GTOOL-X-main/* . 2>/dev/null || true
             cp -r temp_extracted/GTOOL-X-main/.* . 2>/dev/null || true
@@ -27,7 +27,6 @@ jobs:
             cp -r temp_extracted/.* . 2>/dev/null || true
           fi
           
-          # Clean temporary files and delete the zip file
           rm -rf temp_extracted
           rm -f GTOOL-X-main.zip
 
