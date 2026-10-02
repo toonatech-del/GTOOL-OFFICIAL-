@@ -39,6 +39,11 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val pendingResult = goAsync()
+        val action = intent.action
+        if (action != null && action != "com.gsd.gtoolx.ACTION_REMINDER_ALARM") {
+            pendingResult.finish()
+            return
+        }
 
         val rawTitle = intent.getStringExtra("REMINDER_TITLE")
             ?: intent.getStringExtra("description")

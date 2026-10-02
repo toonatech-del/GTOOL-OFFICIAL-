@@ -302,6 +302,11 @@ class ReminderRepository(
      * Schedules native exact alarm via AlarmManagerCompat with Doze mode bypass.
      */
     fun scheduleExactAlarm(id: Long, title: String, timestampMillis: Long, relatedItemId: String? = null) {
+        val now = System.currentTimeMillis()
+        if (timestampMillis <= now) {
+            // Do not schedule past or expired timestamps on AlarmManager
+            return
+        }
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
         val intent = Intent(context, com.example.receiver.ReminderBroadcastReceiver::class.java).apply {
             action = "com.gsd.gtoolx.ACTION_REMINDER_ALARM"

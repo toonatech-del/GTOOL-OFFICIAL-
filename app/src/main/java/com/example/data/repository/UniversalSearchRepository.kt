@@ -6,6 +6,7 @@ import com.example.data.local.UniversalSearchEntity
 import com.example.data.local.UniversalSearchFtsEntity
 import com.example.model.ItemType
 import com.example.model.WorkspaceItem
+import com.example.util.cleanNoteContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -37,14 +38,9 @@ class UniversalSearchRepository(private val context: Context) {
         metadataJson: String,
         imageUri: String? = null
     ) = withContext(Dispatchers.IO) {
-        val mergedText = "$title\n$contentText\n$metadataJson"
+        val cleanContent = contentText.cleanNoteContent()
+        val mergedText = "$title\n$cleanContent\n$metadataJson"
         val hasPhone = phoneRegex.containsMatchIn(mergedText)
-
-        val finalContentText = if (hasPhone) {
-            "$contentText\n\n[Searchable Metadata Entities]: phone mobile contact"
-        } else {
-            contentText
-        }
 
         val finalMetadataJson = if (hasPhone) {
             try {
@@ -59,11 +55,13 @@ class UniversalSearchRepository(private val context: Context) {
             metadataJson
         }
 
+        searchDao.deleteById(id)
+
         val entity = UniversalSearchEntity(
             id = id,
             module = module,
             title = title,
-            contentText = finalContentText,
+            contentText = cleanContent,
             metadataJson = finalMetadataJson,
             imageUri = imageUri,
             createdAt = System.currentTimeMillis()
@@ -73,7 +71,7 @@ class UniversalSearchRepository(private val context: Context) {
             UniversalSearchFtsEntity(
                 id = id,
                 title = title,
-                contentText = finalContentText,
+                contentText = cleanContent,
                 metadataJson = finalMetadataJson
             )
         )
@@ -84,12 +82,12 @@ class UniversalSearchRepository(private val context: Context) {
     }
 
     /**
-     * Expose search with FTS prefix fallback to LIKE substring
+     * Expose search with FTS prefix fallback to LIKE substring, deduplicated by ID.
      */
     fun search(rawQuery: String): Flow<List<UniversalSearchEntity>> {
         val query = rawQuery.trim()
         if (query.isEmpty()) {
-            return searchDao.getAllItems()
+            return searchDao.getAllItems().map { list -> list.distinctBy { it.id } }
         }
 
         val isPhoneQuery = query.contains("phone", ignoreCase = true) ||
@@ -130,7 +128,7 @@ class UniversalSearchRepository(private val context: Context) {
             } catch (e: Exception) {
                 searchDao.searchLike(likeQueryTerm).collect { emit(it) }
             }
-        }.flowOn(Dispatchers.IO)
+        }.map { list -> list.distinctBy { it.id } }.flowOn(Dispatchers.IO)
     }
 
     /**

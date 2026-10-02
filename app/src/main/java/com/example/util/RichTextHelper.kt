@@ -336,3 +336,22 @@ object RichTextHelper {
 }
 
 fun String.cleanAsterisks(): String = this.replace("*", "").replace("#", "").trim()
+
+fun String.cleanNoteContent(): String {
+    var result = this
+    val markers = listOf(
+        "Searchable Metadata / Entities:",
+        "[Searchable Metadata Entities]:",
+        "[Attached Photo OCR Extracted Text]:",
+        "\nSearchable Metadata / Entities:",
+        "\n[Searchable Metadata Entities]:",
+        "\nTags: #"
+    )
+    for (marker in markers) {
+        val idx = result.indexOf(marker)
+        if (idx != -1) {
+            result = result.substring(0, idx)
+        }
+    }
+    return result.trim()
+}

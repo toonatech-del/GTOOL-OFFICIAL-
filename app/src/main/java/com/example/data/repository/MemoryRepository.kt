@@ -16,6 +16,7 @@ import com.example.model.WorkspaceItem
 import com.example.util.MlKitTextExtractor
 import com.example.util.PdfPageRenderer
 import com.example.util.PdfTextExtractor
+import com.example.util.cleanNoteContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -62,43 +63,7 @@ class MemoryRepository(private val context: Context) {
         .flowOn(Dispatchers.IO)
 
     private fun extractAndAppendEntities(title: String, rawText: String): String {
-        val phoneRegex = Regex("""(\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9})""")
-        val emailRegex = Regex("""\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}\b""")
-        val dateRegex = Regex("""\b\d{2,4}[-./]\d{2}[-./]\d{2,4}\b""")
-
-        val combinedText = "$title\n$rawText"
-        val entities = mutableListOf<String>()
-
-        // Find phone numbers
-        val phones = phoneRegex.findAll(combinedText).map { it.value.trim() }.filter { it.length >= 7 && it.any { c -> c.isDigit() } }.toList()
-        if (phones.isNotEmpty()) {
-            entities.addAll(phones)
-            entities.add("phone")
-            entities.add("mobile")
-            entities.add("contact")
-        }
-
-        // Find emails
-        val emails = emailRegex.findAll(combinedText).map { it.value.trim() }.toList()
-        if (emails.isNotEmpty()) {
-            entities.addAll(emails)
-            entities.add("email")
-            entities.add("contact")
-        }
-
-        // Find dates
-        val dates = dateRegex.findAll(combinedText).map { it.value.trim() }.toList()
-        if (dates.isNotEmpty()) {
-            entities.addAll(dates)
-            entities.add("date")
-        }
-
-        val distinctEntities = entities.distinct()
-        return if (distinctEntities.isNotEmpty()) {
-            rawText + "\n\nSearchable Metadata / Entities:\n" + distinctEntities.joinToString(" ")
-        } else {
-            rawText
-        }
+        return rawText.cleanNoteContent()
     }
 
     /**
@@ -129,7 +94,7 @@ class MemoryRepository(private val context: Context) {
 
         val likeQueryTerm = if (isPhoneQuery && !cleanQuery.any { it.isDigit() }) "phone" else cleanQuery
 
-        return if (isPhoneQuery) {
+        return (if (isPhoneQuery) {
             memoryDao.searchMemoriesLike(likeQueryTerm).map { entities ->
                 entities.map { it.toWorkspaceItem() }
             }.flowOn(Dispatchers.IO)
@@ -150,7 +115,7 @@ class MemoryRepository(private val context: Context) {
                     }
                 }
             }.flowOn(Dispatchers.IO)
-        }
+        }).map { list -> list.distinctBy { it.id } }
     }
 
     /**
@@ -200,30 +165,16 @@ class MemoryRepository(private val context: Context) {
             ""
         }
 
-        val fullExtractedText = buildString {
-            append(cleanTitle)
-            append("\n\n")
-            append(content)
-            if (tags.isNotEmpty()) {
-                append("\nTags: ")
-                append(tags.joinToString(" "))
-            }
-            if (extractedImageText.isNotBlank()) {
-                append("\n[Attached Photo OCR Extracted Text]:\n")
-                append(extractedImageText)
-            }
-        }
-
-        val fullExtractedTextWithEntities = extractAndAppendEntities(cleanTitle, fullExtractedText)
-        val words = content.split("\\s+".toRegex()).filter { it.isNotBlank() }.size
+        val cleanContent = content.cleanNoteContent()
+        val words = cleanContent.split("\\s+".toRegex()).filter { it.isNotBlank() }.size
         val primaryTag = tags.firstOrNull()?.removePrefix("#")?.replaceFirstChar { it.uppercase() } ?: "Note"
-        val firstSummaryLine = content.lines().firstOrNull { it.isNotBlank() }?.take(90) ?: "Notepad memory"
+        val firstSummaryLine = cleanContent.lines().firstOrNull { it.isNotBlank() }?.take(90) ?: "Notepad memory"
 
         val entity = MemoryEntity(
             id = id,
             type = "note",
             title = cleanTitle,
-            extractedText = fullExtractedTextWithEntities,
+            extractedText = cleanContent,
             imageUri = attachmentUri,
             createdAt = System.currentTimeMillis(),
             sizeText = "$words words${if (hasAttachment) " • 1 Photo" else ""}",
@@ -234,14 +185,15 @@ class MemoryRepository(private val context: Context) {
         )
 
         memoryDao.insertMemory(entity)
-        memoryDao.insertFts(MemoryFtsEntity(id = id, title = cleanTitle, extractedText = fullExtractedTextWithEntities))
+        val ftsSearchText = "$cleanTitle\n$cleanContent\n${tags.joinToString(" ")}"
+        memoryDao.insertFts(MemoryFtsEntity(id = id, title = cleanTitle, extractedText = ftsSearchText))
 
         // Index in Universal Search
         universalSearchRepo.insertOrUpdate(
             id = id,
             module = "Note",
             title = cleanTitle,
-            contentText = fullExtractedTextWithEntities,
+            contentText = cleanContent,
             metadataJson = JSONObject().apply {
                 put("tags", tags.joinToString(","))
                 put("has_attachment", hasAttachment)
@@ -635,17 +587,20 @@ class MemoryRepository(private val context: Context) {
             "Just now"
         }
 
+        val cleanText = extractedText.cleanNoteContent()
+        val cleanSummary = summary.cleanNoteContent()
+
         return WorkspaceItem(
             id = id,
             title = title,
             type = itemType,
             dateModified = dateFormatted,
             sizeText = sizeText.ifBlank { if (itemType == ItemType.NOTE) "Note" else "1.2 MB" },
-            summary = summary.ifBlank { extractedText.take(90) },
+            summary = cleanSummary.ifBlank { cleanText.take(90) },
             subtitle = subtitle.ifBlank { "${itemType.label} • Offline FTS4 Index" },
             isPinned = isPinned,
             tag = tag ?: itemType.label,
-            contentSnippet = extractedText,
+            contentSnippet = cleanText,
             imageUri = imageUri,
             isBackedUp = isSyncedToDrive,
             driveFileId = driveFileId,
