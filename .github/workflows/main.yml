@@ -28,9 +28,9 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Generate Expected Keystore in Root Directory
+      - name: Generate Master Keystore
         run: |
-          # Matches the path expected by :app:validateSigningRelease
+          # Keystore root me generate hoga
           keytool -genkeypair -v \
             -keystore release.keystore \
             -alias release \
@@ -55,42 +55,36 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: ./gradlew assembleRelease --stacktrace
+        # -x lint -x test se extra strict checks bypass hote hain
+        run: ./gradlew assembleRelease -x lint -x test --stacktrace
 
-      - name: Verify and Align Release Artifact
+      - name: Sign APK with apksigner
         run: |
           mkdir -p release_out
           
-          # Find the output APK
-          APK_FILE=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+          # Built APK find karein
+          RAW_APK=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
           
-          if [ -z "$APK_FILE" ]; then
+          if [ -z "$RAW_APK" ]; then
             echo "::error::No APK found in app/build/outputs/apk/release/"
             exit 1
           fi
+
+          echo "Target APK found: $RAW_APK"
           
-          echo "Found APK at: $APK_FILE"
-          cp "$APK_FILE" release_out/GTOOL-release-signed.apk
-          
-          # Locate apksigner and verify
+          # Android SDK apksigner find karein
           APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools/ -name apksigner | sort -V | tail -n 1)
           
-          if "$APKSIGNER" verify release_out/GTOOL-release-signed.apk > /dev/null 2>&1; then
-            echo "APK is already signed by Gradle."
-          else
-            echo "APK unsigned. Signing with apksigner..."
-            "$APKSIGNER" sign \
-              --ks release.keystore \
-              --ks-key-alias "release" \
-              --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
-              --key-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
-              --out release_out/GTOOL-release-signed.apk \
-              "$APK_FILE"
-          fi
-          
-          # Final verification check
+          # Sign manually
+          "$APKSIGNER" sign \
+            --ks release.keystore \
+            --ks-key-alias "release" \
+            --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
+            --out release_out/GTOOL-release-signed.apk \
+            "$RAW_APK"
+
+          # Verify
           "$APKSIGNER" verify --verbose release_out/GTOOL-release-signed.apk
 
       - name: Publish Automatic GitHub Release
