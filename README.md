@@ -8,9 +8,9 @@
 [![Build](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=for-the-badge&logo=githubactions)](https://github.com)
 
 --
-[![Download Latest Release](https://img.shields.io/badge/DOWNLOAD_LATEST_RELEASE-APK-orange?style=for-the-badge&logo=android)](https://github.com/toonatech-del/GTOOL-X/releases/latest/download/GtoolX-Release.apk)
+[![Download Latest Release](https://img.shields.io/badge/DOWNLOAD_LATEST_RELEASE-APK-orange?style=for-the-badge&logo=android)](https://github.com/toonatech-del/GTOOL-OFFICIAL-/releases/latest/download/GtoolX-Release.apk)
 
-### [Direct Download Link (Click Here)](https://github.com/toonatech-del/GTOOL-X/releases/latest/download/GtoolX-Release.apk)
+### [Direct Download Link (Click Here)](https://github.com/toonatech-del/GTOOL-OFFICIAL-/releases/latest/download/GtoolX-Release.apk)
 
 ---
 
