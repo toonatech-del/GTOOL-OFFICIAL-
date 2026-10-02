@@ -5,6 +5,10 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# GitHub Release create karne ke liye write permissions
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -60,7 +64,7 @@ jobs:
           TARGET_APK=$(find app/build/outputs/apk/release/ -type f -name "*.apk" | head -n 1)
           echo "Found APK: $TARGET_APK"
           
-          # Step 1: ZipAlign karna (ye nahi hone par invalid package bolta hai)
+          # Step 1: ZipAlign karna
           $BUILD_TOOLS_PATH/zipalign -v -p 4 "$TARGET_APK" app/build/outputs/apk/release/aligned.apk
           
           # Step 2: Full signature (v1, v2, v3, v4) ke sath sign karna
@@ -72,14 +76,27 @@ jobs:
             --v1-signing-enabled true \
             --v2-signing-enabled true \
             --v3-signing-enabled true \
-            --out app/build/outputs/apk/release/GTOOL-X-signed.apk \
+            --out app/build/outputs/apk/release/GTOOL-X.apk \
             app/build/outputs/apk/release/aligned.apk
 
           # Verify signature
-          $BUILD_TOOLS_PATH/apksigner verify -v app/build/outputs/apk/release/GTOOL-X-signed.apk
+          $BUILD_TOOLS_PATH/apksigner verify -v app/build/outputs/apk/release/GTOOL-X.apk
 
-      - name: Upload Signed APK
+      - name: Upload Signed APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: GTOOL-X-APK
-          path: app/build/outputs/apk/release/GTOOL-X-signed.apk
+          path: app/build/outputs/apk/release/GTOOL-X.apk
+
+      - name: Auto Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "GTOOL X Production (Latest)"
+          body: "Automated production release built via GitHub Actions."
+          draft: false
+          prerelease: false
+          files: app/build/outputs/apk/release/GTOOL-X.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
