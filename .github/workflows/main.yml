@@ -2,173 +2,77 @@ name: Build & Publish Latest APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
-    name: Build & Publish Latest APK
     runs-on: ubuntu-latest
 
     steps:
-
-      # ================================
-      # 1. Checkout
-      # ================================
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      # ================================
-      # 2. Java 17
-      # ================================
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
+          distribution: 'temurin'
           cache: gradle
 
-      # ================================
-      # 3. Create Android Debug Key
-      # ================================
-      - name: Create Standard Debug Key for Gradle
-        shell: bash
-        run: |
-          set -e
-
-          mkdir -p ~/.android
-          mkdir -p app
-
-          keytool -genkeypair -v \
-            -keystore ~/.android/debug.keystore \
-            -storepass android \
-            -alias androiddebugkey \
-            -keypass android \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
-
-          cp ~/.android/debug.keystore ./app/debug.keystore
-
-          echo "Debug keystore created successfully."
-
-      # ================================
-      # 4. Restore Production Keystore
-      # ================================
-      - name: Restore Production Signing Key
-        shell: bash
+      - name: Setup Permanent Signing Key
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_DATA: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          set -euo pipefail
-
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "ERROR: KEYSTORE_BASE64 secret is missing."
-            exit 1
+          if [ -z "$KEY_DATA" ]; then
+            echo "::warning ::Key secret nahi mila! Nayi permanent key banayi ja rahi hai..."
+            keytool -genkeypair -v \
+              -keystore permanent.jks \
+              -alias gtool \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$KEY_PASS" \
+              -keypass "$KEY_PASS" \
+              -dname "CN=GTOOL, O=Android, C=IN"
+            
+            # Base64 string runner console mein mask ho kar print hogi
+            echo "--- COPY_THIS_KEY_START ---"
+            base64 -w 0 permanent.jks
+            echo ""
+            echo "--- COPY_THIS_KEY_END ---"
+          else
+            echo "Existing secret key decode ki ja rahi hai..."
+            echo "$KEY_DATA" | tr -d '\r\n ' | base64 -d > permanent.jks
           fi
 
-          if [ -z "$KEYSTORE_PASSWORD" ]; then
-            echo "ERROR: KEYSTORE_PASSWORD secret is missing."
-            exit 1
-          fi
+      - name: Grant Execute Permission to Gradle
+        run: chmod +x gradlew
 
-          echo "Preparing production keystore..."
-
-          # Remove whitespace/newlines
-          CLEAN_BASE64=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
-
-          # Fix missing Base64 padding
-          REMAINDER=$((${#CLEAN_BASE64} % 4))
-
-          if [ "$REMAINDER" -eq 1 ]; then
-            echo "ERROR: KEYSTORE_BASE64 is corrupted."
-            exit 1
-          elif [ "$REMAINDER" -eq 2 ]; then
-            CLEAN_BASE64="${CLEAN_BASE64}=="
-          elif [ "$REMAINDER" -eq 3 ]; then
-            CLEAN_BASE64="${CLEAN_BASE64}="
-          fi
-
-          # Decode Base64
-          printf '%s' "$CLEAN_BASE64" | base64 --decode > permanent_master.jks
-
-          # Check file
-          if [ ! -s permanent_master.jks ]; then
-            echo "ERROR: permanent_master.jks is empty."
-            exit 1
-          fi
-
-          echo "Keystore file restored."
-
-          # Verify keystore + alias + password
-          keytool -list \
-            -keystore permanent_master.jks \
-            -storepass "$KEYSTORE_PASSWORD" \
-            -alias gtoolx_key > /dev/null
-
-          echo "Production keystore verified successfully."
-
-      # ================================
-      # 5. Gradle Permission
-      # ================================
-      - name: Grant Execute Permission to Gradlew
-        shell: bash
-        run: |
-          chmod +x gradlew
-
-      # ================================
-      # 6. Build Release APK
-      # ================================
       - name: Build Release APK
-        shell: bash
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Sign APK with Permanent Key
         run: |
-          set -e
-
-          ./gradlew assembleRelease \
-            --no-daemon \
-            --build-cache \
-            --parallel \
-            --stacktrace
-
-      # ================================
-      # 7. Sign APK
-      # ================================
-      - name: Sign GTOOL-X.apk
-        shell: bash
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: |
-          set -euo pipefail
-
-          mkdir -p release_out
-
-          # Find generated release APK
-          RAW_APK=$(find app/build/outputs/apk/release \
-            -maxdepth 1 \
-            -type f \
-            -name "*.apk" \
-            ! -name "*unaligned*" \
-            | head -n 1)
-
-          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
-            echo "ERROR: Release APK was not found."
-            exit 1
+          BUILD_TOOLS_PATH=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
+          
+          # Unsigned ya default signed release APK dhund kar final sign karna
+          TARGET_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ ! -f "$TARGET_APK" ]; then
+            TARGET_APK="app/build/outputs/apk/release/app-release.apk"
           fi
 
-          echo "Release APK found:"
-          echo "$RAW_APK"
+          $BUILD_TOOLS_PATH/apksigner sign \
+            --ks permanent.jks \
+            --ks-key-alias gtool \
+            --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+            --out app/build/outputs/apk/release/GTOOL-X-signed.apk \
+            "$TARGET_APK"
 
-          # Find latest apksigner
-          APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools \
-            -type f \
-            -name apksigner \
-            | sort -V \
-            | tail -n 
+      - name: Upload Signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GTOOL-X-APK
+          path: app/build/outputs/apk/release/GTOOL-X-signed.apk
