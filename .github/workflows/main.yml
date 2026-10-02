@@ -20,13 +20,13 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Setup Permanent Signing Key
+      - name: Setup Signing Key
         env:
           KEY_DATA: ${{ secrets.KEYSTORE_BASE64 }}
           KEY_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           if [ -z "$KEY_DATA" ]; then
-            echo "::warning ::Key secret nahi mila! Nayi permanent key banayi ja rahi hai..."
+            echo "Generating brand new key..."
             keytool -genkeypair -v \
               -keystore permanent.jks \
               -alias gtool \
@@ -37,13 +37,12 @@ jobs:
               -keypass "$KEY_PASS" \
               -dname "CN=GTOOL, O=Android, C=IN"
             
-            # Base64 string runner console mein mask ho kar print hogi
             echo "--- COPY_THIS_KEY_START ---"
             base64 -w 0 permanent.jks
             echo ""
             echo "--- COPY_THIS_KEY_END ---"
           else
-            echo "Existing secret key decode ki ja rahi hai..."
+            echo "Decoding existing key..."
             echo "$KEY_DATA" | tr -d '\r\n ' | base64 -d > permanent.jks
           fi
 
@@ -53,23 +52,31 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Sign APK with Permanent Key
+      - name: Align and Sign APK
         run: |
           BUILD_TOOLS_PATH=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
           
-          # Unsigned ya default signed release APK dhund kar final sign karna
-          TARGET_APK="app/build/outputs/apk/release/app-release-unsigned.apk"
-          if [ ! -f "$TARGET_APK" ]; then
-            TARGET_APK="app/build/outputs/apk/release/app-release.apk"
-          fi
-
+          # Target APK locate karna
+          TARGET_APK=$(find app/build/outputs/apk/release/ -type f -name "*.apk" | head -n 1)
+          echo "Found APK: $TARGET_APK"
+          
+          # Step 1: ZipAlign karna (ye nahi hone par invalid package bolta hai)
+          $BUILD_TOOLS_PATH/zipalign -v -p 4 "$TARGET_APK" app/build/outputs/apk/release/aligned.apk
+          
+          # Step 2: Full signature (v1, v2, v3, v4) ke sath sign karna
           $BUILD_TOOLS_PATH/apksigner sign \
             --ks permanent.jks \
             --ks-key-alias gtool \
             --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
             --key-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
             --out app/build/outputs/apk/release/GTOOL-X-signed.apk \
-            "$TARGET_APK"
+            app/build/outputs/apk/release/aligned.apk
+
+          # Verify signature
+          $BUILD_TOOLS_PATH/apksigner verify -v app/build/outputs/apk/release/GTOOL-X-signed.apk
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
