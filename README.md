@@ -9,6 +9,20 @@
 
 ---
 
+## 📥 Download Latest APK
+
+[![Download Latest APK](https://img.shields.io/badge/Download-Latest%20APK-brightgreen?style=for-the-badge&logo=android)](https://github.com/toonatech-del/GTOOL-OFFICIAL-/releases/latest/download/GTOOL-X.apk)
+
+Direct link:
+
+[⬇️ Download Latest APK](https://github.com/toonatech-del/GTOOL-OFFICIAL-/releases/latest/download/GTOOL-X.apk)
+
+All releases:
+
+[📋 View All Releases](https://github.com/toonatech-del/GTOOL-OFFICIAL-/releases)
+
+---
+
 ## 📱 Features & Capabilities
 
 GTOOL X provides essential daily productivity, document management, and photo utility features on Android:
