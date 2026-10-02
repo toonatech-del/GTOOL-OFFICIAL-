@@ -14,7 +14,7 @@ import com.example.data.local.ReminderDao
 import com.example.data.local.ReminderEntity
 import com.example.data.local.UniversalSearchDao
 import com.example.util.QueryExpander
-import com.example.util.ReminderBroadcastReceiver
+import com.example.receiver.ReminderBroadcastReceiver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
