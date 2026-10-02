@@ -1,4 +1,4 @@
-name: Build and Auto-Publish GTOOL X Release
+name: Build & Publish Latest APK
 
 on:
   push:
@@ -15,11 +15,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # ================================
+      # 1. Checkout
+      # ================================
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
+      # ================================
+      # 2. Java 17
+      # ================================
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -27,8 +34,14 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      # ================================
+      # 3. Create Android Debug Key
+      # ================================
       - name: Create Standard Debug Key for Gradle
+        shell: bash
         run: |
+          set -e
+
           mkdir -p ~/.android
           mkdir -p app
 
@@ -44,10 +57,16 @@ jobs:
 
           cp ~/.android/debug.keystore ./app/debug.keystore
 
+          echo "Debug keystore created successfully."
+
+      # ================================
+      # 4. Restore Production Keystore
+      # ================================
       - name: Restore Production Signing Key
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           set -euo pipefail
 
@@ -56,28 +75,72 @@ jobs:
             exit 1
           fi
 
-          CLEAN_BASE64=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
-
-          printf '%s' "$CLEAN_BASE64" | base64 --decode --ignore-garbage > permanent_master.jks
-
-          if [ ! -s permanent_master.jks ]; then
-            echo "ERROR: Production keystore could not be restored."
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "ERROR: KEYSTORE_PASSWORD secret is missing."
             exit 1
           fi
 
-          echo "Production keystore restored successfully."
+          echo "Preparing production keystore..."
 
+          # Remove whitespace/newlines
+          CLEAN_BASE64=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
+
+          # Fix missing Base64 padding
+          REMAINDER=$((${#CLEAN_BASE64} % 4))
+
+          if [ "$REMAINDER" -eq 1 ]; then
+            echo "ERROR: KEYSTORE_BASE64 is corrupted."
+            exit 1
+          elif [ "$REMAINDER" -eq 2 ]; then
+            CLEAN_BASE64="${CLEAN_BASE64}=="
+          elif [ "$REMAINDER" -eq 3 ]; then
+            CLEAN_BASE64="${CLEAN_BASE64}="
+          fi
+
+          # Decode Base64
+          printf '%s' "$CLEAN_BASE64" | base64 --decode > permanent_master.jks
+
+          # Check file
+          if [ ! -s permanent_master.jks ]; then
+            echo "ERROR: permanent_master.jks is empty."
+            exit 1
+          fi
+
+          echo "Keystore file restored."
+
+          # Verify keystore + alias + password
+          keytool -list \
+            -keystore permanent_master.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias gtoolx_key > /dev/null
+
+          echo "Production keystore verified successfully."
+
+      # ================================
+      # 5. Gradle Permission
+      # ================================
       - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
-
-      - name: Build Release APK
+        shell: bash
         run: |
+          chmod +x gradlew
+
+      # ================================
+      # 6. Build Release APK
+      # ================================
+      - name: Build Release APK
+        shell: bash
+        run: |
+          set -e
+
           ./gradlew assembleRelease \
             --no-daemon \
             --build-cache \
             --parallel \
             --stacktrace
 
+      # ================================
+      # 7. Sign APK
+      # ================================
       - name: Sign GTOOL-X.apk
         shell: bash
         env:
@@ -85,13 +148,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "$KEYSTORE_PASSWORD" ]; then
-            echo "ERROR: KEYSTORE_PASSWORD secret is missing."
-            exit 1
-          fi
-
           mkdir -p release_out
 
+          # Find generated release APK
           RAW_APK=$(find app/build/outputs/apk/release \
             -maxdepth 1 \
             -type f \
@@ -99,4 +158,17 @@ jobs:
             ! -name "*unaligned*" \
             | head -n 1)
 
-          if [ -
+          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
+            echo "ERROR: Release APK was not found."
+            exit 1
+          fi
+
+          echo "Release APK found:"
+          echo "$RAW_APK"
+
+          # Find latest apksigner
+          APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools \
+            -type f \
+            -name apksigner \
+            | sort -V \
+            | tail -n 
