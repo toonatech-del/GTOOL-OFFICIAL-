@@ -28,9 +28,16 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
+      - name: Fix Broken Proguard Syntax
+        run: |
+          # Proguard file me corrupt _prefix* syntax ko clean rule se replace karega
+          if [ -f "app/proguard-rules.pro" ]; then
+            sed -i 's/{ _prefix\* ; }/{ *; }/g' app/proguard-rules.pro
+            echo "-dontwarn androidx.room.**" >> app/proguard-rules.pro
+          fi
+
       - name: Generate Master Keystore
         run: |
-          # Keystore root me generate hoga
           keytool -genkeypair -v \
             -keystore release.keystore \
             -alias release \
@@ -55,14 +62,11 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        # -x lint -x test se extra strict checks bypass hote hain
         run: ./gradlew assembleRelease -x lint -x test --stacktrace
 
       - name: Sign APK with apksigner
         run: |
           mkdir -p release_out
-          
-          # Built APK find karein
           RAW_APK=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
           
           if [ -z "$RAW_APK" ]; then
@@ -70,12 +74,8 @@ jobs:
             exit 1
           fi
 
-          echo "Target APK found: $RAW_APK"
-          
-          # Android SDK apksigner find karein
           APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools/ -name apksigner | sort -V | tail -n 1)
           
-          # Sign manually
           "$APKSIGNER" sign \
             --ks release.keystore \
             --ks-key-alias "release" \
@@ -84,7 +84,6 @@ jobs:
             --out release_out/GTOOL-release-signed.apk \
             "$RAW_APK"
 
-          # Verify
           "$APKSIGNER" verify --verbose release_out/GTOOL-release-signed.apk
 
       - name: Publish Automatic GitHub Release
@@ -105,3 +104,4 @@ jobs:
           name: GTOOL-Signed-Release-APK
           path: release_out/GTOOL-release-signed.apk
           retention-days: 14
+          
