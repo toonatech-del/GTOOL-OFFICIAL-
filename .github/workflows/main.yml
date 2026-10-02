@@ -1,45 +1,99 @@
-name: Extract ZIP and Setup Repo
+name: Build and Auto-Publish GTOOL X Release
 
 on:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  unzip-and-commit:
+  build:
+    name: Build & Publish Latest APK
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Extract ZIP File
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Generate Fixed Permanent Keystore
+        shell: bash
         run: |
-          mkdir -p temp_extracted
-          unzip -q GTOOL-X-main.zip -d temp_extracted/
-          
-          # Target folder detect karein
-          SRC_DIR="temp_extracted"
-          if [ -d "temp_extracted/GTOOL-X-main" ]; then
-            SRC_DIR="temp_extracted/GTOOL-X-main"
+          mkdir -p ~/.android
+          mkdir -p app
+
+          # Fixed deterministic certificate - Identical signature across all builds
+          keytool -genkeypair -v \
+            -keystore permanent.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -startdate "2026/01/01 00:00:00" \
+            -storepass "android" \
+            -keypass "android" \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+          cp permanent.keystore ~/.android/debug.keystore
+          cp permanent.keystore ./debug.keystore
+          cp permanent.keystore ./app/debug.keystore
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x gradlew
+
+      - name: Build APK via Gradle
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Sign APK with Fixed Master Key
+        shell: bash
+        run: |
+          mkdir -p release_out
+          RAW_APK=$(find app/build/outputs/apk/ -name "*.apk" | head -n 1)
+
+          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
+            echo "Error: No APK found after build!"
+            exit 1
           fi
 
-          # Agar zip me .github/workflows hai toh usse hata dete hain taaki permission error na aaye
-          rm -rf "$SRC_DIR/.github" || true
+          APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools/ -name apksigner | sort -V | tail -n 1)
 
-          # Files copy karein
-          cp -r $SRC_DIR/* . 2>/dev/null || true
-          cp -r $SRC_DIR/.* . 2>/dev/null || true
+          if [ -n "$APKSIGNER_BIN" ] && [ -x "$APKSIGNER_BIN" ]; then
+            $APKSIGNER_BIN sign --ks permanent.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out release_out/GToolX-Release.apk "$RAW_APK"
+          else
+            cp "$RAW_APK" release_out/GToolX-Release.apk
+          fi
 
-          # Cleanup
-          rm -rf temp_extracted
-          rm -f GTOOL-X-main.zip
+      - name: Publish Automatic GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ github.run_number }}"
+          name: "GTOOL X Production Release v${{ github.run_number }}"
+          body: |
+            ### GTOOL X Release Build
+            - Direct update supported (Permanent Master Key).
+          files: release_out/GToolX-Release.apk
+          make_latest: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit and Push Extracted Files
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: unzip and extract project files to root" || echo "No changes to commit"
-          git push origin main
+      - name: Upload Artifact Backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: GTOOL-X-Release-APK
+          path: release_out/GToolX-Release.apk
+          retention-days: 7
+          
