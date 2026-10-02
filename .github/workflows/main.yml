@@ -1,99 +1,15 @@
-name: Build and Auto-Publish GTOOL X Release
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: write
+name: One Time Key Generator
+on: workflow_dispatch
 
 jobs:
-  build:
-    name: Build & Publish Latest APK
+  make_key:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Generate Fixed Permanent Keystore
-        shell: bash
+      - name: Generate Key
         run: |
-          mkdir -p ~/.android
-          mkdir -p app
-
-          # Fixed deterministic certificate - Identical signature across all builds
-          keytool -genkeypair -v \
-            -keystore permanent.keystore \
-            -alias androiddebugkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -startdate "2026/01/01 00:00:00" \
-            -storepass "android" \
-            -keypass "android" \
-            -dname "CN=Android Debug,O=Android,C=US"
-
-          cp permanent.keystore ~/.android/debug.keystore
-          cp permanent.keystore ./debug.keystore
-          cp permanent.keystore ./app/debug.keystore
-
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
-
-      - name: Build APK via Gradle
-        run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace
-
-      - name: Sign APK with Fixed Master Key
-        shell: bash
-        run: |
-          mkdir -p release_out
-          RAW_APK=$(find app/build/outputs/apk/ -name "*.apk" | head -n 1)
-
-          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
-            echo "Error: No APK found after build!"
-            exit 1
-          fi
-
-          APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools/ -name apksigner | sort -V | tail -n 1)
-
-          if [ -n "$APKSIGNER_BIN" ] && [ -x "$APKSIGNER_BIN" ]; then
-            $APKSIGNER_BIN sign --ks permanent.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out release_out/GToolX-Release.apk "$RAW_APK"
-          else
-            cp "$RAW_APK" release_out/GToolX-Release.apk
-          fi
-
-      - name: Publish Automatic GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ github.run_number }}"
-          name: "GTOOL X Production Release v${{ github.run_number }}"
-          body: |
-            ### GTOOL X Release Build
-            - Direct update supported (Permanent Master Key).
-          files: release_out/GToolX-Release.apk
-          make_latest: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Artifact Backup
-        uses: actions/upload-artifact@v4
-        with:
-          name: GTOOL-X-Release-APK
-          path: release_out/GToolX-Release.apk
-          retention-days: 7
+          keytool -genkeypair -v -keystore release.jks -alias gtoolx_key -keyalg RSA -keysize 2048 -validity 10000 -storepass "MyStrongSecretPass123" -keypass "MyStrongSecretPass123" -dname "CN=GToolX,O=GSD,C=IN"
+          echo "=================== COPY THIS TEXT ==================="
+          base64 -w 0 release.jks
+          echo ""
+          echo "======================================================"
           
