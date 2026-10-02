@@ -28,52 +28,69 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Generate Master Keystore Inside GitHub Runner
+      - name: Generate Expected Keystore in Root Directory
         run: |
-          mkdir -p keystore
+          # Matches the path expected by :app:validateSigningRelease
           keytool -genkeypair -v \
-            -keystore keystore/master_release.jks \
-            -alias gtool_master \
+            -keystore release.keystore \
+            -alias release \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
             -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
             -keypass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -dname "CN=GTOOL, OU=App, O=GSD, L=Patna, ST=Bihar, C=IN"
+            -dname "CN=GTOOL, OU=Android, O=GTOOL-OFFICIAL, L=Patna, ST=Bihar, C=IN"
 
-      - name: Backup Keystore to Artifacts (Save for Future)
+      - name: Backup Keystore to Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: PERMANENT-KEYSTORE-BACKUP
-          path: keystore/master_release.jks
+          name: RELEASE-KEYSTORE-BACKUP
+          path: release.keystore
           retention-days: 90
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
 
-      - name: Build APK via Gradle
+      - name: Build Release APK via Gradle
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Sign APK with Permanent Master Key
+      - name: Verify and Align Release Artifact
         run: |
           mkdir -p release_out
-          UNSIGNED_APK=$(find app/build/outputs/apk/release/ -name "*.apk" ! -name "*signed*" | head -n 1)
-
-          if [ -z "$UNSIGNED_APK" ]; then
-            echo "::error::Release APK not found in app/build/outputs/apk/release/"
+          
+          # Find the output APK
+          APK_FILE=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+          
+          if [ -z "$APK_FILE" ]; then
+            echo "::error::No APK found in app/build/outputs/apk/release/"
             exit 1
           fi
-
+          
+          echo "Found APK at: $APK_FILE"
+          cp "$APK_FILE" release_out/GTOOL-release-signed.apk
+          
+          # Locate apksigner and verify
           APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools/ -name apksigner | sort -V | tail -n 1)
           
-          "$APKSIGNER" sign \
-            --ks keystore/master_release.jks \
-            --ks-key-alias "gtool_master" \
-            --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
-            --key-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
-            --out release_out/GTOOL-release-signed.apk \
-            "$UNSIGNED_APK"
-
+          if "$APKSIGNER" verify release_out/GTOOL-release-signed.apk > /dev/null 2>&1; then
+            echo "APK is already signed by Gradle."
+          else
+            echo "APK unsigned. Signing with apksigner..."
+            "$APKSIGNER" sign \
+              --ks release.keystore \
+              --ks-key-alias "release" \
+              --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
+              --key-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
+              --out release_out/GTOOL-release-signed.apk \
+              "$APK_FILE"
+          fi
+          
+          # Final verification check
           "$APKSIGNER" verify --verbose release_out/GTOOL-release-signed.apk
 
       - name: Publish Automatic GitHub Release
