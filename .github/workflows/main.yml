@@ -31,7 +31,6 @@ jobs:
         run: |
           mkdir -p ~/.android
           mkdir -p app
-          # Standard debug key taaki Gradle build ke waqt password error na de
           keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           cp ~/.android/debug.keystore ./app/debug.keystore
 
@@ -62,14 +61,17 @@ jobs:
             exit 1
           fi
 
+          # Password ke aage-peeche koi space na rahe
+          CLEAN_PASS=$(echo -n "$KEYSTORE_PASSWORD" | tr -d '\r\n ')
+
           APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools/ -name apksigner | sort -V | tail -n 1)
 
           if [ -n "$APKSIGNER_BIN" ] && [ -x "$APKSIGNER_BIN" ]; then
             $APKSIGNER_BIN sign \
               --ks permanent_master.jks \
               --ks-key-alias "gtoolx_key" \
-              --ks-pass "pass:$KEYSTORE_PASSWORD" \
-              --key-pass "pass:$KEYSTORE_PASSWORD" \
+              --ks-pass "pass:$CLEAN_PASS" \
+              --key-pass "pass:$CLEAN_PASS" \
               --out release_out/GToolX-Release.apk \
               "$RAW_APK"
           else
