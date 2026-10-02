@@ -23,82 +23,89 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
-          cache: 'gradle'
+          cache: gradle
 
       - name: Create Standard Debug Key for Gradle
         run: |
           mkdir -p ~/.android
           mkdir -p app
-          keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+          keytool -genkeypair -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
           cp ~/.android/debug.keystore ./app/debug.keystore
 
-      - name: Restore Master Production Key from Secrets
+      - name: Restore Production Signing Key
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 --decode > permanent_master.jks
+          set -euo pipefail
+
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ERROR: KEYSTORE_BASE64 secret is missing."
+            exit 1
           fi
+
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > permanent_master.jks
+
+          if [ ! -s permanent_master.jks ]; then
+            echo "ERROR: Production keystore could not be restored."
+            exit 1
+          fi
+
+          echo "Production keystore restored successfully."
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
 
-      - name: Build APK via Gradle
+      - name: Build Release APK
         run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace || ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --build-cache \
+            --parallel \
+            --stacktrace
 
-      - name: Sign & Prepare GTOOL-X.apk Asset
+      - name: Sign GTOOL-X.apk
         shell: bash
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          mkdir -p release_out
-          RAW_APK=$(find app/build/outputs/apk/ -name "*.apk" ! -name "*unaligned*" | head -n 1)
+          set -euo pipefail
 
-          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
-            echo "Error: No APK found after build!"
+          if [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "ERROR: KEYSTORE_PASSWORD secret is missing."
             exit 1
           fi
 
-          CLEAN_PASS=$(echo -n "$KEYSTORE_PASSWORD" | tr -d '\r\n ')
-          APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools/ -name apksigner | sort -V | tail -n 1)
+          mkdir -p release_out
 
-          if [ -n "$CLEAN_PASS" ] && [ -f permanent_master.jks ] && [ -n "$APKSIGNER_BIN" ] && [ -x "$APKSIGNER_BIN" ]; then
-            echo "Signing release APK with Master Key..."
-            $APKSIGNER_BIN sign \
-              --ks permanent_master.jks \
-              --ks-key-alias "gtoolx_key" \
-              --ks-pass "pass:$CLEAN_PASS" \
-              --key-pass "pass:$CLEAN_PASS" \
-              --out release_out/GTOOL-X.apk \
-              "$RAW_APK"
-          else
-            echo "Master key signature skipped or key missing, using built APK directly..."
-            cp "$RAW_APK" release_out/GTOOL-X.apk
+          RAW_APK=$(find app/build/outputs/apk/release \
+            -maxdepth 1 \
+            -type f \
+            -name "*.apk" \
+            ! -name "*unaligned*" \
+            | head -n 1)
+
+          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
+            echo "ERROR: Release APK was not found."
+            exit 1
           fi
 
-      - name: Publish Automatic GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ github.run_number }}"
-          name: "GTOOL X Production Release v${{ github.run_number }}"
-          body: |
-            ### GTOOL X Release Build v${{ github.run_number }}
-            - Direct update supported.
-            - Permanent Asset: GTOOL-X.apk
-          files: release_out/GTOOL-X.apk
-          make_latest: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools \
+            -type f \
+            -name apksigner \
+            | sort -V \
+            | tail -n 1)
 
-      - name: Upload Artifact Backup
-        uses: actions/upload-artifact@v4
-        with:
-          name: GTOOL-X-Release-APK
-          path: release_out/GTOOL-X.apk
-          retention-days: 7
+          if [ -z "$AP
