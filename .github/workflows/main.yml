@@ -1,92 +1,15 @@
-name: Build and Auto-Publish GTOOL X Release
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: write
+name: One Time Key Generator
+on: workflow_dispatch
 
 jobs:
-  build:
-    name: Build & Publish Latest APK
+  make_key:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Restore Signing Key from Secrets
-        shell: bash
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Generate Key
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > release.jks
-
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
-
-      - name: Build APK via Gradle
-        run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace || ./gradlew assembleDebug --no-daemon --stacktrace
-
-      - name: Sign APK with Permanent Master Key
-        shell: bash
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        run: |
-          mkdir -p release_out
-          RAW_APK=$(find app/build/outputs/apk/ -name "*.apk" ! -name "*unaligned*" | head -n 1)
-
-          if [ -z "$RAW_APK" ] || [ ! -f "$RAW_APK" ]; then
-            echo "Error: No APK found after build!"
-            exit 1
-          fi
-
-          APKSIGNER_BIN=$(find /usr/local/lib/android/sdk/build-tools/ -name apksigner | sort -V | tail -n 1)
-
-          if [ -n "$APKSIGNER_BIN" ] && [ -x "$APKSIGNER_BIN" ]; then
-            $APKSIGNER_BIN sign \
-              --ks release.jks \
-              --ks-key-alias "gtoolx_key" \
-              --ks-pass "pass:$KEYSTORE_PASSWORD" \
-              --key-pass "pass:$KEYSTORE_PASSWORD" \
-              --out release_out/GToolX-Release.apk \
-              "$RAW_APK"
-          else
-            echo "apksigner not found!"
-            exit 1
-          fi
-
-      - name: Publish Automatic GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "v${{ github.run_number }}"
-          name: "GTOOL X Production Release v${{ github.run_number }}"
-          body: |
-            ### GTOOL X Release Build
-            - Direct update supported (Permanent Master Signature).
-          files: release_out/GToolX-Release.apk
-          make_latest: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Artifact Backup
-        uses: actions/upload-artifact@v4
-        with:
-          name: GTOOL-X-Release-APK
-          path: release_out/GToolX-Release.apk
-          retention-days: 7
+          keytool -genkeypair -v -keystore release.jks -alias gtoolx_key -keyalg RSA -keysize 2048 -validity 10000 -storepass "MyStrongSecretPass123" -keypass "MyStrongSecretPass123" -dname "CN=GToolX,O=GSD,C=IN"
+          echo "=================== COPY THIS TEXT ==================="
+          base64 -w 0 release.jks
+          echo ""
+          echo "======================================================"
+          
