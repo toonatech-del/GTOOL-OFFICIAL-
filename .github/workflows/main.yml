@@ -56,16 +56,9 @@ jobs:
             exit 1
           fi
 
-          # Remove spaces, line breaks and other whitespace
           CLEAN_BASE64=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
 
-          if [ -z "$CLEAN_BASE64" ]; then
-            echo "ERROR: KEYSTORE_BASE64 is empty."
-            exit 1
-          fi
-
-          # Decode production keystore
-          printf '%s' "$CLEAN_BASE64" | base64 --decode > permanent_master.jks
+          printf '%s' "$CLEAN_BASE64" | base64 --decode --ignore-garbage > permanent_master.jks
 
           if [ ! -s permanent_master.jks ]; then
             echo "ERROR: Production keystore could not be restored."
@@ -106,4 +99,4 @@ jobs:
             ! -name "*unaligned*" \
             | head -n 1)
 
-          if [ -z "$RAW_APK"
+          if [ -
