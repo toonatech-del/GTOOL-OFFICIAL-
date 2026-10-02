@@ -647,7 +647,7 @@ class MemoryRepository(private val context: Context) {
             tag = tag ?: itemType.label,
             contentSnippet = extractedText,
             imageUri = imageUri,
-            isSyncedToDrive = isSyncedToDrive,
+            isBackedUp = isSyncedToDrive,
             driveFileId = driveFileId,
             dueDate = dueDate,
             createdAt = createdAt

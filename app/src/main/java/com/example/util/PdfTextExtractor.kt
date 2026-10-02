@@ -11,10 +11,17 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import java.io.File
 import java.io.FileOutputStream
+
+suspend fun <T> com.google.android.gms.tasks.Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
+    addOnSuccessListener { result -> cont.resume(result) }
+    addOnFailureListener { exception -> cont.resumeWithException(exception) }
+}
 
 object PdfTextExtractor {
 
@@ -91,7 +98,7 @@ object PdfTextExtractor {
                     page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
 
                     val image = InputImage.fromBitmap(bitmap, 0)
-                    val visionResult = textRecognizer.process(image).await()
+                    val visionResult = textRecognizer.process(image).awaitTask()
                     val extractedPageText = visionResult.text.trim()
 
                     if (extractedPageText.isNotEmpty()) {

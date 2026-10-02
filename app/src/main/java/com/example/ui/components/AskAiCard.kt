@@ -65,7 +65,6 @@ import kotlin.math.sin
 fun AskAiCard(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    onMicClick: () -> Unit,
     onPromptSuggestionClick: (String) -> Unit = {},
     onSearchSubmit: (String) -> Unit = {},
     modifier: Modifier = Modifier
@@ -189,7 +188,7 @@ fun AskAiCard(
             ) {
                 if (searchQuery.isEmpty()) {
                     Text(
-                        text = "Search anything...",
+                        text = "Search notes, PDFs, bills...",
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 16.sp,
@@ -223,9 +222,8 @@ fun AskAiCard(
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
-
             if (searchQuery.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
                         .size(30.dp)
@@ -240,29 +238,6 @@ fun AskAiCard(
                         contentDescription = "Clear search",
                         tint = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.size(18.dp)
-                    )
-                }
-            } else {
-                // iOS tactile bouncing mic button
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(Color(0x4000F5D4), Color(0x307928CA))
-                            )
-                        )
-                        .border(1.dp, Color(0x6600F5D4), CircleShape)
-                        .iosBounce { onMicClick() }
-                        .testTag("search_mic_button"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Mic,
-                        contentDescription = "Voice Search",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

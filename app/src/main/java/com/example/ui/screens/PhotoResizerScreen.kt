@@ -173,15 +173,15 @@ fun PhotoResizerScreen(
 
     val presets = remember {
         listOf(
-            AspectPreset("SSC Photo", 413, 531, "3.5x4.5cm, 20-50KB, 200 DPI", 20, 50, "SSC Standard"),
-            AspectPreset("SSC Sign", 472, 236, "4.0x2.0cm, 10-20KB, 200 DPI", 10, 20, "SSC Signature"),
-            AspectPreset("UPSC Ph/Sig", 413, 413, "350x350px min, 20-300KB, 300 DPI", 20, 300, "UPSC Standard"),
-            AspectPreset("Railway Ph", 413, 531, "35x45mm, 30-70KB, 200 DPI", 30, 70, "RRB Standard"),
-            AspectPreset("Banking Ph", 531, 413, "4.5x3.5cm, 20-50KB, 200 DPI", 20, 50, "IBPS Standard"),
-            AspectPreset("Indian Passport", 413, 531, "3.5x4.5cm, 300 DPI", 10, 100, "Passport"),
-            AspectPreset("US Visa", 600, 600, "2x2 inch, 300 DPI", 10, 240, "US Visa"),
-            AspectPreset("PAN/DL", 295, 413, "2.5x3.5cm, 200 DPI", 10, 50, "Govt ID"),
-            AspectPreset("Custom", 1080, 1080, "Free input", 10, 500, "Custom")
+            AspectPreset("Standard Photo", 413, 531, "3.5x4.5cm, 20-50KB, 200 DPI", 20, 50, "3.5x4.5cm Preset"),
+            AspectPreset("Signature Size", 472, 236, "4.0x2.0cm, 10-20KB, 200 DPI", 10, 20, "Signature Preset"),
+            AspectPreset("Square Photo", 413, 413, "350x350px min, 20-300KB, 300 DPI", 20, 300, "Square Preset"),
+            AspectPreset("Document Photo", 413, 531, "35x45mm, 30-70KB, 200 DPI", 30, 70, "Document Preset"),
+            AspectPreset("ID Photo", 531, 413, "4.5x3.5cm, 20-50KB, 200 DPI", 20, 50, "ID Photo Preset"),
+            AspectPreset("Passport Size", 413, 531, "3.5x4.5cm, 300 DPI", 10, 100, "Passport Preset"),
+            AspectPreset("2x2 Square", 600, 600, "2x2 inch, 300 DPI", 10, 240, "2x2 Inch Preset"),
+            AspectPreset("Card Size", 295, 413, "2.5x3.5cm, 200 DPI", 10, 50, "Card Size Preset"),
+            AspectPreset("Custom", 1080, 1080, "Free input", 10, 500, "Custom Dimensions")
         )
     }
 

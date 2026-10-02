@@ -20,6 +20,12 @@ class BackupManager(private val context: Context) {
         .build()
     private val adapter = moshi.adapter(FullBackupData::class.java)
 
+    companion object {
+        private const val MAX_ENTRIES = 1000
+        private const val MAX_FILE_SIZE = 50L * 1024 * 1024 // 50 MB
+        private const val MAX_TOTAL_SIZE = 250L * 1024 * 1024 // 250 MB
+    }
+
     suspend fun exportBackup(uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val vaultDb = AppDatabase.getInstance(context)
@@ -40,8 +46,12 @@ class BackupManager(private val context: Context) {
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
                 ZipOutputStream(BufferedOutputStream(outputStream)).use { zos ->
                     // 1. Write JSON entry
-                    zos.putNextEntry(ZipEntry("backup_data.json"))
-                    zos.write(json.toByteArray())
+                    val jsonBytes = json.toByteArray(Charsets.UTF_8)
+                    val jsonEntry = ZipEntry("backup_data.json").apply {
+                        size = jsonBytes.size.toLong()
+                    }
+                    zos.putNextEntry(jsonEntry)
+                    zos.write(jsonBytes)
                     zos.closeEntry()
 
                     // 2. Write Internal Files (thumbnails, etc.)
@@ -52,27 +62,31 @@ class BackupManager(private val context: Context) {
                     fullData.memories.forEach { item ->
                         // Backup Image
                         if (!item.imageUri.isNullOrBlank()) {
-                            val uri = Uri.parse(item.imageUri)
-                            if (uri.scheme == "content" || uri.scheme == "file") {
-                                backupMediaFile(uri, "media/${item.id}_image", zos)
+                            val mediaUri = Uri.parse(item.imageUri)
+                            if (mediaUri.scheme == "content" || mediaUri.scheme == "file") {
+                                backupMediaFile(mediaUri, "media/${sanitizeFilename(item.id)}_image", zos)
                             }
                         }
                         // Backup PDF
                         if (!item.driveFileId.isNullOrBlank() && (item.type == "pdf" || item.driveFileId?.contains(".pdf") == true)) {
-                            val uri = Uri.parse(item.driveFileId)
-                            if (uri.scheme == "content" || uri.scheme == "file") {
-                                backupMediaFile(uri, "media/${item.id}_pdf", zos)
+                            val mediaUri = Uri.parse(item.driveFileId)
+                            if (mediaUri.scheme == "content" || mediaUri.scheme == "file") {
+                                backupMediaFile(mediaUri, "media/${sanitizeFilename(item.id)}_pdf", zos)
                             }
                         }
                     }
                 }
-            } ?: return@withContext Result.failure(Exception("Could not open output stream"))
+            } ?: return@withContext Result.failure(Exception("Could not open output stream for backup export"))
 
             val totalItems = fullData.memories.size + fullData.invoices.size
             Result.success(totalItems)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun sanitizeFilename(input: String): String {
+        return input.replace(Regex("[^a-zA-Z0-9_-]"), "_")
     }
 
     private fun backupMediaFile(uri: Uri, zipName: String, zos: ZipOutputStream) {
@@ -90,12 +104,13 @@ class BackupManager(private val context: Context) {
     private fun packDirectoryToZip(directory: File, zipPathPrefix: String, zos: ZipOutputStream) {
         directory.listFiles()?.forEach { file ->
             if (file.isDirectory) {
-                if (file.name != "vault_media") { // Don't pack the media folder we're restoring to if it exists
+                if (file.name != "vault_media") {
                     packDirectoryToZip(file, "$zipPathPrefix${file.name}/", zos)
                 }
             } else {
                 try {
-                    zos.putNextEntry(ZipEntry("$zipPathPrefix${file.name}"))
+                    val entryName = "$zipPathPrefix${file.name}"
+                    zos.putNextEntry(ZipEntry(entryName))
                     FileInputStream(file).use { fis ->
                         fis.copyTo(zos)
                     }
@@ -107,40 +122,92 @@ class BackupManager(private val context: Context) {
         }
     }
 
+    /**
+     * Restores backup archive with strict Zip Slip protection, bounds checking, and canonical path validation.
+     */
     suspend fun restoreBackup(uri: Uri): Result<Int> = withContext(Dispatchers.IO) {
         try {
             var totalRestored = 0
             var backupData: FullBackupData? = null
             val restoredMediaPaths = mutableMapOf<String, String>()
 
+            val baseDir = context.filesDir.canonicalFile
+            val mediaDir = File(baseDir, "vault_media").canonicalFile
+            if (!mediaDir.exists()) mediaDir.mkdirs()
+
+            var entryCount = 0
+            var totalExtractedBytes = 0L
+
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 ZipInputStream(BufferedInputStream(inputStream)).use { zis ->
                     var entry: ZipEntry? = zis.nextEntry
                     while (entry != null) {
+                        entryCount++
+                        if (entryCount > MAX_ENTRIES) {
+                            throw SecurityException("Backup archive exceeds maximum permitted entries limit ($MAX_ENTRIES)")
+                        }
+
+                        val entryName = entry.name
+                        // Reject directory traversal attempts in entry name
+                        if (entryName.contains("..") || entryName.startsWith("/") || entryName.startsWith("\\")) {
+                            throw SecurityException("Malicious ZIP entry path detected: $entryName")
+                        }
+
                         when {
-                            entry.name == "backup_data.json" -> {
-                                val json = zis.bufferedReader().readText()
+                            entryName == "backup_data.json" -> {
+                                val json = zis.bufferedReader(Charsets.UTF_8).readText()
+                                totalExtractedBytes += json.toByteArray(Charsets.UTF_8).size
+                                if (totalExtractedBytes > MAX_TOTAL_SIZE) {
+                                    throw SecurityException("Backup archive exceeds maximum total decompressed size")
+                                }
                                 backupData = adapter.fromJson(json)
                             }
-                            entry.name.startsWith("internal_files/") -> {
-                                val relativePath = entry.name.removePrefix("internal_files/")
-                                if (relativePath.isNotEmpty()) {
-                                    val destFile = File(context.filesDir, relativePath)
+                            entryName.startsWith("internal_files/") -> {
+                                val relativePath = entryName.removePrefix("internal_files/")
+                                if (relativePath.isNotEmpty() && !entry.isDirectory) {
+                                    val destFile = File(baseDir, relativePath).canonicalFile
+                                    // Zip Slip check
+                                    if (!destFile.path.startsWith(baseDir.path + File.separator) && destFile.path != baseDir.path) {
+                                        throw SecurityException("Zip Slip path traversal blocked for: $entryName")
+                                    }
                                     destFile.parentFile?.mkdirs()
+                                    var fileSize = 0L
                                     FileOutputStream(destFile).use { fos ->
-                                        zis.copyTo(fos)
+                                        val buffer = ByteArray(8192)
+                                        var bytesRead: Int
+                                        while (zis.read(buffer).also { bytesRead = it } != -1) {
+                                            fileSize += bytesRead
+                                            totalExtractedBytes += bytesRead
+                                            if (fileSize > MAX_FILE_SIZE || totalExtractedBytes > MAX_TOTAL_SIZE) {
+                                                throw SecurityException("Extracted file exceeds safe storage quota")
+                                            }
+                                            fos.write(buffer, 0, bytesRead)
+                                        }
                                     }
                                 }
                             }
-                            entry.name.startsWith("media/") -> {
-                                val fileName = entry.name.removePrefix("media/")
-                                if (fileName.isNotEmpty()) {
-                                    val mediaDir = File(context.filesDir, "vault_media").apply { mkdirs() }
-                                    val destFile = File(mediaDir, fileName)
-                                    FileOutputStream(destFile).use { fos ->
-                                        zis.copyTo(fos)
+                            entryName.startsWith("media/") -> {
+                                val fileName = sanitizeFilename(entryName.removePrefix("media/"))
+                                if (fileName.isNotEmpty() && !entry.isDirectory) {
+                                    val destFile = File(mediaDir, fileName).canonicalFile
+                                    // Zip Slip check
+                                    if (!destFile.path.startsWith(mediaDir.path + File.separator) && destFile.path != mediaDir.path) {
+                                        throw SecurityException("Zip Slip path traversal blocked for media: $entryName")
                                     }
-                                    restoredMediaPaths[entry.name] = Uri.fromFile(destFile).toString()
+                                    var fileSize = 0L
+                                    FileOutputStream(destFile).use { fos ->
+                                        val buffer = ByteArray(8192)
+                                        var bytesRead: Int
+                                        while (zis.read(buffer).also { bytesRead = it } != -1) {
+                                            fileSize += bytesRead
+                                            totalExtractedBytes += bytesRead
+                                            if (fileSize > MAX_FILE_SIZE || totalExtractedBytes > MAX_TOTAL_SIZE) {
+                                                throw SecurityException("Extracted media exceeds safe storage quota")
+                                            }
+                                            fos.write(buffer, 0, bytesRead)
+                                        }
+                                    }
+                                    restoredMediaPaths[entryName] = Uri.fromFile(destFile).toString()
                                 }
                             }
                         }
@@ -148,21 +215,19 @@ class BackupManager(private val context: Context) {
                         entry = zis.nextEntry
                     }
                 }
-            } ?: return@withContext Result.failure(Exception("Could not open input stream"))
+            } ?: return@withContext Result.failure(Exception("Could not open input stream for restore"))
 
-            val data = backupData ?: return@withContext Result.failure(Exception("Failed to parse backup data from ZIP"))
-            
+            val data = backupData ?: return@withContext Result.failure(Exception("Failed to read valid backup metadata from archive"))
+
             val vaultDb = AppDatabase.getInstance(context)
             val invoiceDb = InvoiceDatabase.getInstance(context)
 
             // Restore DB records
             data.memories.forEach { entity ->
-                // Update file paths if media was restored
                 val updatedEntity = entity.copy(
-                    imageUri = restoredMediaPaths["media/${entity.id}_image"] ?: entity.imageUri,
-                    driveFileId = restoredMediaPaths["media/${entity.id}_pdf"] ?: entity.driveFileId
+                    imageUri = restoredMediaPaths["media/${sanitizeFilename(entity.id)}_image"] ?: entity.imageUri,
+                    driveFileId = restoredMediaPaths["media/${sanitizeFilename(entity.id)}_pdf"] ?: entity.driveFileId
                 )
-                
                 vaultDb.memoryDao().insertMemory(updatedEntity)
                 vaultDb.memoryDao().insertFts(MemoryFtsEntity(id = entity.id, title = entity.title, extractedText = entity.extractedText))
             }
@@ -173,7 +238,7 @@ class BackupManager(private val context: Context) {
             invoiceDb.productDao().insertProducts(data.products)
             vaultDb.reminderDao().insertReminders(data.reminders)
             vaultDb.notificationDao().insertNotifications(data.notifications)
-            
+
             totalRestored = data.memories.size + data.invoices.size
             Result.success(totalRestored)
         } catch (e: Exception) {

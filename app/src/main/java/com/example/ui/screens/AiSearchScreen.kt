@@ -134,7 +134,7 @@ fun AiSearchScreen(
     messages: List<ChatMessage>,
     onSendMessage: (String) -> Unit,
     onBackClick: () -> Unit,
-    onVoiceClick: () -> Unit,
+    onVoiceClick: () -> Unit = {},
     onAddMemoryClick: () -> Unit = {},
     onOpenCitation: (CitationSource) -> Unit = {},
     onUploadPdf: (Uri) -> Unit = {},
@@ -148,20 +148,6 @@ fun AiSearchScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val speechRecognizerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val spokenText = result.data
-                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-                ?.firstOrNull() ?: ""
-            if (spokenText.isNotBlank()) {
-                inputText = spokenText
-                onSendMessage(spokenText)
-            }
-        }
-    }
 
     val pdfPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -420,20 +406,7 @@ fun AiSearchScreen(
                             inputText = ""
                         }
                     },
-                    onVoiceClick = {
-                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to search anything in GTOOL X...")
-                        }
-                        try {
-                            speechRecognizerLauncher.launch(intent)
-                        } catch (e: Exception) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Speech recognition not available on this device")
-                            }
-                        }
-                    },
+                    onVoiceClick = onVoiceClick,
                     onAttachClick = { /* Attachment icon removed in favor of Voice Mic */ },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1099,69 +1072,17 @@ private fun StickyBottomInputBar(
                 .clip(RoundedCornerShape(28.dp))
                 .background(Color(0xCC1A1D24))
                 .border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(28.dp))
-                .padding(horizontal = 8.dp, vertical = 6.dp)
+                .padding(horizontal = 14.dp, vertical = 6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left Action: Mic Button with active ripple indicator
-                val infiniteTransition = rememberInfiniteTransition(label = "mic_pulse")
-                val pulseScale by infiniteTransition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.2f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1200, easing = LinearOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "pulse"
-                )
-                val pulseAlpha by infiniteTransition.animateFloat(
-                    initialValue = 0.4f,
-                    targetValue = 0f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1200, easing = LinearOutSlowInEasing),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "alpha"
-                )
-
-                Box(contentAlignment = Alignment.Center) {
-                    // Pulse ring
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .graphicsLayer {
-                                scaleX = pulseScale
-                                scaleY = pulseScale
-                                alpha = pulseAlpha
-                            }
-                            .background(Color(0xFF00E5FF), CircleShape)
-                    )
-
-                    IconButton(
-                        onClick = onVoiceClick,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0x1AFFFFFF), CircleShape)
-                            .testTag("chat_voice_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Mic,
-                            contentDescription = "Voice Input",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
                 // Center Field: Borderless Text Input
                 Box(modifier = Modifier.weight(1f)) {
                     if (inputText.isEmpty()) {
                         Text(
-                            text = "Ask anything or search vault...",
+                            text = "Search notes, PDFs, bills...",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 color = Color(0x80FFFFFF),
                                 fontSize = 15.sp,

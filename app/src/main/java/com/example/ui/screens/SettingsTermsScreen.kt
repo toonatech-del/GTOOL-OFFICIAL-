@@ -191,7 +191,7 @@ fun SettingsScreen(
                 SettingsCard(
                     icon = Icons.Rounded.Description,
                     title = "Terms & Conditions",
-                    description = "Disclaimers and user responsibilities",
+                    description = "Legal agreement, disclaimers & app policies",
                     onClick = onNavigateToTerms
                 )
 
@@ -199,8 +199,36 @@ fun SettingsScreen(
                 SettingsCard(
                     icon = Icons.Rounded.Security,
                     title = "Privacy Policy",
-                    description = "100% offline, zero data collection",
+                    description = "Local processing & data handling policy",
                     onClick = onNavigateToPrivacy
+                )
+
+                // 7. Open Source Licenses Card
+                var showLicensesDialog by remember { mutableStateOf(false) }
+                SettingsCard(
+                    icon = Icons.Rounded.Code,
+                    title = "Open Source Licenses",
+                    description = "Third-party libraries & notices",
+                    onClick = { showLicensesDialog = true }
+                )
+
+                // 8. Contact Developer Card
+                SettingsCard(
+                    icon = Icons.Rounded.Email,
+                    title = "Contact Developer",
+                    description = "Get in touch or report an issue",
+                    onClick = {
+                        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("mailto:hgdduf93@gmail.com?subject=GTOOL%20X%20Feedback")
+                        }
+                        try {
+                            context.startActivity(emailIntent)
+                        } catch (e: Exception) {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Developer Contact: hgdduf93@gmail.com")
+                            }
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -612,15 +640,27 @@ fun PrivacyPolicyScreen(onNavigateBack: () -> Unit) {
                     .fillMaxWidth()
                     .weight(1f)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                PolicySection("1. Introduction & Core Philosophy", "GTOOL X is built on a zero-knowledge, strictly offline architecture. We firmly believe your personal documents and identity records belong exclusively to you.")
-                PolicySection("2. 100% Local On-Device Processing", "All optical character recognition (OCR), text entity extraction, image resizing, and conversions are executed directly on the user's device hardware. No personal documents, images, or extracted strings are transmitted to remote servers.")
-                PolicySection("3. Zero Telemetry & No Third-Party Tracking", "GTOOL X does not embed analytics SDKs, advertising trackers, device identifiers, or telemetry monitoring services. We do not collect behavioral data, usage stats, or error logs containing user data.")
-                PolicySection("4. Storage & Vault Security", "Documents and generated photos reside under user-controlled storage (`Documents/GTOOL X/` and `Pictures/GTOOL X/`). The internal metadata database is secured locally using Android platform security standards.")
-                PolicySection("5. Camera & File Storage Permissions", "Camera and Storage permissions requested by GTOOL X are strictly utilized in real time to capture photos for resizing, scanning, and saving output locally. Permissions are never exploited for background surveillance or unauthorized access.")
-                PolicySection("6. User Rights & Data Ownership", "Users retain complete ownership and full control over their files. Deleting files or clearing app storage deletes the local indexing immediately.")
-                PolicySection("7. Policy Revisions & Disclaimers", "This policy remains effective offline. GTOOL X disclaims all liabilities concerning external handling once files are exported outside the app.")
+                PolicySection("1. INTRODUCTION", "GTOOL X is a document and productivity utility application designed to help users manage documents, images, notes, OCR text, reminders and related utilities on their Android device.")
+                PolicySection("2. INFORMATION THE APP MAY ACCESS", "Depending on the features chosen by the user, GTOOL X may access photos and images selected by the user, PDF and document files selected by the user, camera input when scanning features are used, notes created by the user, OCR text generated from user-selected content, reminder information created by the user, local document metadata, and files selected for backup, restore, import or export.")
+                PolicySection("3. LOCAL PROCESSING", "Where functionality is designed to operate locally, documents, images, notes, OCR results, and search indexes are processed and stored on the user's device.")
+                PolicySection("4. NO SALE OF USER CONTENT", "GTOOL X does not sell user documents, images, PDFs, notes, or OCR content.")
+                PolicySection("5. DEVELOPER-OPERATED SERVERS", "GTOOL X does not operate developer servers to collect or store user documents or personal records. Note: Optional device services such as Google Play Services Document Scanner may interact with Play Services infrastructure as required by the operating system.")
+                PolicySection("6. OCR", "OCR is performed locally using the application's supported OCR technology. OCR results may contain errors and should be verified by the user before relying on extracted text.")
+                PolicySection("7. SEARCH", "Search indexes are maintained locally on device to allow users to search their notes, documents, and OCR text.")
+                PolicySection("8. CAMERA", "Camera access is used only when the user explicitly chooses camera or scanning functionality.")
+                PolicySection("9. FILE ACCESS", "The app accesses files selected or provided by the user for features such as viewing, OCR, conversion, organization, import, or export.")
+                PolicySection("10. EXPORT AND SHARING", "When the user explicitly chooses Android's share or export functionality, the selected content is provided to the target application chosen by the user. GTOOL X does not control how third-party recipients handle shared content.")
+                PolicySection("11. REMINDERS", "Reminder information is used solely to schedule notifications and alarms on the user's local device.")
+                PolicySection("12. BACKUP AND RESTORE", "Local backup functionality generates user-initiated archives saved directly on device storage via Android file picker. Backups remain stored on device until moved or deleted by the user.")
+                PolicySection("13. DATA RETENTION", "Locally stored data remains on the user's device until the user deletes it, clears application data, uninstalls the app, or otherwise removes it.")
+                PolicySection("14. DATA DELETION", "Users can delete app data, individual documents, notes, and backups directly within the app or through Android system settings.")
+                PolicySection("15. SECURITY", "GTOOL X employs reasonable security measures including Android app-isolated private storage, biometric unlock protection, and canonical path checks.")
+                PolicySection("16. THIRD-PARTY LIBRARIES", "Relevant third-party libraries used in GTOOL X are disclosed in the Open Source Licenses section.")
+                PolicySection("17. CHILDREN", "GTOOL X is a general audience document utility app and does not knowingly collect personal information from children.")
+                PolicySection("18. POLICY CHANGES", "This Privacy Policy may be updated periodically. Any changes will be reflected with an updated effective date.")
+                PolicySection("19. CONTACT", "Developer: GSD\nEmail: hgdduf93@gmail.com")
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -761,50 +801,127 @@ fun TermsConditionsScreen(onNavigateBack: () -> Unit) {
                 TermsSectionCard(
                     number = "01",
                     icon = Icons.Rounded.CheckCircle,
-                    title = "Acceptance of Terms & App Scope",
-                    content = "GTOOL X (Powered by GSD) is an offline-first productivity and document utility application designed for on-device document management, optical character recognition (OCR), photo resizing/compression, and smart invoice creation. By installing, accessing, or using GTOOL X, you agree to be bound by these Terms & Conditions."
+                    title = "1. Acceptance of Terms",
+                    content = "By installing or using GTOOL X, you agree to be bound by these Terms & Conditions. If you do not agree, please do not use the application."
                 )
 
                 TermsSectionCard(
                     number = "02",
                     icon = Icons.Rounded.Storage,
-                    title = "100% Offline Architecture & Data Ownership",
-                    content = "GTOOL X operates entirely on-device without remote telemetry or cloud databases. All files, generated invoices, cropped photos, and OCR transcriptions reside strictly within the user's local device storage (Documents/GTOOL X/ and Pictures/GTOOL X/).\n\nYou retain 100% exclusive ownership of your data, files, and documents. GTOOL X has zero access, visibility, or control over your local records."
+                    title = "2. Description of the Application",
+                    content = "GTOOL X provides document, image, PDF, OCR, notes, search, reminder, invoice, and related utility features for Android devices."
                 )
 
                 TermsSectionCard(
                     number = "03",
-                    icon = Icons.Rounded.CropFree,
-                    title = "Photo Resizer & Exam Portal Presets Disclaimer",
-                    content = "Presets provided within the Photo Resizer module (e.g., SSC, UPSC, Railway/RRB, Banking/IBPS, PAN/Visa) are intended as productivity aids based on standard publicly available specifications.\n\nExamination boards and portal authorities frequently update file dimension, DPI, aspect ratio, and KB limits. The user bears sole responsibility for verifying final file dimensions and file sizes against official notification guidelines prior to submission. GTOOL X is not responsible for any rejected applications or form submission issues."
+                    icon = Icons.Rounded.VerifiedUser,
+                    title = "3. User Responsibility",
+                    content = "Users are solely responsible for the content they import, scan, store, process, or share using GTOOL X."
                 )
 
                 TermsSectionCard(
                     number = "04",
-                    icon = Icons.Rounded.VerifiedUser,
-                    title = "Non-Affiliation with Government Bodies",
-                    content = "GTOOL X is an independent offline utility tool and is NOT affiliated, associated, authorized, endorsed by, or in any way officially connected with any government agency, public exam authority, or financial institution."
+                    icon = Icons.Rounded.Gavel,
+                    title = "4. Copyright and User Content",
+                    content = "Users must have appropriate rights or permissions to access, copy, scan, process, or store content they use with the application. GTOOL X does not grant users rights to third-party copyrighted material."
                 )
 
                 TermsSectionCard(
                     number = "05",
-                    icon = Icons.Rounded.ReceiptLong,
-                    title = "Smart Invoice Maker & Tax Calculations",
-                    content = "The Smart Invoice Maker provides digital formatting, OCR bill conversion, and arithmetic calculation assistance. Users are solely responsible for ensuring the accuracy of line items, tax/GST rates, business details, and legal compliance before issuing invoices to clients or authorities."
+                    icon = Icons.Rounded.AutoAwesome,
+                    title = "5. OCR Disclaimer",
+                    content = "OCR and extracted document text may contain recognition errors. Verify important information before relying on extracted text."
                 )
 
                 TermsSectionCard(
                     number = "06",
-                    icon = Icons.Rounded.Lock,
-                    title = "Local Backups & Biometric App Lock",
-                    content = "Biometric authentication and local backup features depend directly on the host device's Android security subsystem. It is the user's responsibility to maintain device security and secure backup archives."
+                    icon = Icons.Rounded.Description,
+                    title = "6. Document Processing Disclaimer",
+                    content = "Processed files, conversions, and resized images should be reviewed for accuracy before being relied upon for formal submissions."
                 )
 
                 TermsSectionCard(
                     number = "07",
-                    icon = Icons.Rounded.Gavel,
-                    title = "Limitation of Liability & 'As Is' Provision",
-                    content = "GTOOL X is provided on an 'AS IS' and 'AS AVAILABLE' basis without warranties of any kind. GTOOL X and its developers shall not be liable for any direct, indirect, incidental, or consequential damages resulting from data loss, device issues, inaccurate calculations, or missed examination deadlines."
+                    icon = Icons.Rounded.ReceiptLong,
+                    title = "7. Invoice / Tax Disclaimer",
+                    content = "Invoice creation and calculation assistance is provided for convenience. Users are responsible for verifying applicable tax rates, invoice requirements, and legal obligations."
+                )
+
+                TermsSectionCard(
+                    number = "08",
+                    icon = Icons.Rounded.NotificationsActive,
+                    title = "8. Reminder Disclaimer",
+                    content = "Reminder functionality relies on device alarm services and should not be relied upon as the sole mechanism for critical or time-sensitive deadlines."
+                )
+
+                TermsSectionCard(
+                    number = "09",
+                    icon = Icons.Rounded.Folder,
+                    title = "9. Backup Responsibility",
+                    content = "Users are responsible for maintaining backups of important data. Local backups created in GTOOL X remain under user management."
+                )
+
+                TermsSectionCard(
+                    number = "10",
+                    icon = Icons.Rounded.Share,
+                    title = "10. Third-Party Applications",
+                    content = "When users export or share content to other applications, those applications operate under their own independent policies and terms."
+                )
+
+                TermsSectionCard(
+                    number = "11",
+                    icon = Icons.Rounded.Code,
+                    title = "11. Intellectual Property",
+                    content = "GTOOL X's original branding, UI, and code remain the property of their respective rights holders. Third-party libraries remain subject to their respective licenses."
+                )
+
+                TermsSectionCard(
+                    number = "12",
+                    icon = Icons.Rounded.Block,
+                    title = "12. Prohibited Uses",
+                    content = "Users must not use the application for unlawful activities, copyright infringement, fraud, unauthorized data access, malware distribution, or other prohibited activities."
+                )
+
+                TermsSectionCard(
+                    number = "13",
+                    icon = Icons.Rounded.Build,
+                    title = "13. Availability",
+                    content = "Application features may be modified, updated, suspended, or discontinued when reasonably necessary for maintenance or software improvements."
+                )
+
+                TermsSectionCard(
+                    number = "14",
+                    icon = Icons.Rounded.Lock,
+                    title = "14. Security",
+                    content = "No software application can guarantee absolute security. GTOOL X employs standard platform security practices to safeguard local data."
+                )
+
+                TermsSectionCard(
+                    number = "15",
+                    icon = Icons.Rounded.Shield,
+                    title = "15. Limitation of Liability",
+                    content = "To the maximum extent permitted by applicable law, GTOOL X shall not be liable for indirect, incidental, or consequential damages resulting from app usage or data loss."
+                )
+
+                TermsSectionCard(
+                    number = "16",
+                    icon = Icons.Rounded.Info,
+                    title = "16. Disclaimer of Warranties",
+                    content = "GTOOL X is provided 'AS IS' without express or implied warranties of any kind regarding merchantability or fitness for a particular purpose."
+                )
+
+                TermsSectionCard(
+                    number = "17",
+                    icon = Icons.Rounded.Edit,
+                    title = "17. Changes to Terms",
+                    content = "These terms may be updated from time to time. Continued use of the application indicates acceptance of any revised terms."
+                )
+
+                TermsSectionCard(
+                    number = "18",
+                    icon = Icons.Rounded.Email,
+                    title = "18. Contact",
+                    content = "Developer: GSD\nEmail: hgdduf93@gmail.com"
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))

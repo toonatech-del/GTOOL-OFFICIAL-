@@ -137,8 +137,6 @@ import com.example.ui.components.RenameItemDialog
 import com.example.ui.components.SearchResultsSection
 import com.example.ui.components.SetReminderBottomSheet
 import com.example.ui.components.TopHeader
-import com.example.ui.components.UserProfileDialog
-import com.example.ui.components.VoiceAssistantDialog
 import com.example.ui.components.iosBounce
 import com.example.ui.components.zoomOnPress
 import com.example.util.ShareUtils
@@ -210,7 +208,6 @@ private fun GToolXAppContent(
     viewModel: GsdcallWorkspaceViewModel
 ) {
     val hasAcceptedTerms by viewModel.hasAcceptedTerms.collectAsStateWithLifecycle()
-    val userSession by viewModel.currentUser.collectAsStateWithLifecycle()
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
     val chatMessages by viewModel.chatMessages.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
@@ -363,9 +360,7 @@ private fun GToolXAppContent(
         }
     }
 
-    var showVoiceDialog by remember { mutableStateOf(false) }
     var showNotificationSheet by remember { mutableStateOf(false) }
-    var showProfileDialog by remember { mutableStateOf(false) }
     var showManageStorageDialog by remember { mutableStateOf(false) }
     var showGalleryVaultSheet by remember { mutableStateOf(false) }
     var itemToDeleteForConfirm by remember { mutableStateOf<WorkspaceItem?>(null) }
@@ -883,10 +878,10 @@ private fun GToolXAppContent(
                                 item(key = "top_header") {
                                     TopHeader(
                                         unreadCount = notifications.count { it.isUnread },
-                                        accountName = userSession.name,
-                                        userEmail = userSession.email,
-                                        profileImageUrl = userSession.avatarUrl,
-                                        onAvatarClick = { showProfileDialog = true },
+                                        accountName = "User",
+                                        userEmail = "",
+                                        profileImageUrl = null,
+                                        onAvatarClick = { showManageStorageDialog = true },
                                         onNotificationClick = { showNotificationSheet = true },
                                         onSettingsClick = { viewModel.navigateTo(CurrentScreen.SETTINGS_TERMS) }
                                     )
@@ -899,20 +894,6 @@ private fun GToolXAppContent(
                                         AskAiCard(
                                             searchQuery = searchQuery,
                                             onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
-                                            onMicClick = { 
-                                                val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                                    putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                                    putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, java.util.Locale.getDefault())
-                                                    putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak to search anything in GTOOL X...")
-                                                }
-                                                try {
-                                                    speechRecognizerLauncher.launch(intent)
-                                                } catch (e: Exception) {
-                                                    coroutineScope.launch {
-                                                        snackbarHostState.showSnackbar("Speech recognition not available on this device")
-                                                    }
-                                                }
-                                            },
                                             onPromptSuggestionClick = { prompt ->
                                                 viewModel.sendChatMessage(prompt)
                                                 if (!com.example.util.ReminderManager.isReminderQuery(prompt)) {
@@ -1102,23 +1083,6 @@ private fun GToolXAppContent(
         }
     }
 
-        // Voice Dialog
-        if (showVoiceDialog) {
-            VoiceAssistantDialog(
-                onDismiss = { showVoiceDialog = false },
-                onVoiceResult = { result ->
-                    showVoiceDialog = false
-                    viewModel.sendChatMessage(result)
-                    if (!com.example.util.ReminderManager.isReminderQuery(result)) {
-                        viewModel.navigateTo(CurrentScreen.AI_SEARCH)
-                    }
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Query: \"$result\"")
-                    }
-                }
-            )
-        }
-
         // Item Context Menu Sheet
         if (itemForContextMenu != null) {
             val ctxItem = itemForContextMenu!!
@@ -1285,57 +1249,6 @@ private fun GToolXAppContent(
                         snackbarHostState.showSnackbar("Reminder scheduled for \"$confirmedTitle\" ⏰")
                     }
                 }
-            )
-        }
-
-        // Profile Dialog
-        if (showProfileDialog) {
-            UserProfileDialog(
-                accountName = userSession.name,
-                userEmail = userSession.email,
-                profileImageUrl = userSession.avatarUrl,
-                isLoggedIn = userSession.isLoggedIn,
-                isBiometricEnabled = isBiometricEnabled,
-                onToggleBiometric = { enabled ->
-                    viewModel.setBiometricEnabled(enabled)
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar(
-                            if (enabled) "Biometric Lock Enabled 🔒" else "Biometric Lock Disabled"
-                        )
-                    }
-                },
-                backupInfo = backupInfo,
-                onCreateBackup = {
-                    viewModel.createLocalBackup { success, msg ->
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar(msg)
-                        }
-                    }
-                },
-                onRestoreBackup = {
-                    viewModel.restoreAllData { count ->
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Restored $count memories from backup! 📂")
-                        }
-                    }
-                },
-                onGoogleSignIn = {
-                    coroutineScope.launch {
-                        val (success, errorMsg) = viewModel.signInWithGoogle(context)
-                        if (success) {
-                            snackbarHostState.showSnackbar("Connected Google Account! 🚀")
-                        } else if (!errorMsg.isNullOrBlank() && !errorMsg.contains("cancelled", ignoreCase = true)) {
-                            snackbarHostState.showSnackbar(errorMsg)
-                        }
-                    }
-                },
-                onSignOut = {
-                    viewModel.signOut(context)
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Logged out successfully 👋")
-                    }
-                },
-                onDismiss = { showProfileDialog = false }
             )
         }
 

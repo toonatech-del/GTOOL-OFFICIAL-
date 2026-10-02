@@ -23,7 +23,7 @@ data class WorkspaceItem(
     val statusText: String? = null,
     val contentSnippet: String? = null,
     val imageUri: String? = null,
-    val isSyncedToDrive: Boolean = false,
+    val isBackedUp: Boolean = false,
     val driveFileId: String? = null,
     val dueDate: Long? = null,
     val createdAt: Long = System.currentTimeMillis()
@@ -36,10 +36,8 @@ data class StorageData(
     val imagesGb: Double = 0.0,
     val notesGb: Double = 0.0,
     val isOfflineReady: Boolean = true,
-    val isGoogleDriveSynced: Boolean = false,
     val lastSyncTime: String = "Just now",
-    val syncAccountEmail: String = "",
-    val syncStatusText: String = "Local Encrypted Storage"
+    val syncStatusText: String = "Local On-Device Vault"
 )
 
 data class NotificationItem(

@@ -5,8 +5,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.auth.AuthManager
-import com.example.data.auth.FirebaseAuthResult
 import com.example.data.local.AppDatabase
 import com.example.data.local.UniversalSearchEntity
 import com.example.data.repository.MemoryRepository
@@ -17,7 +15,6 @@ import com.example.model.ItemType
 import com.example.model.MessageSender
 import com.example.model.NotificationItem
 import com.example.model.StorageData
-import com.example.model.UserSession
 import com.example.model.WorkspaceItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -42,10 +39,7 @@ import java.io.File
 class GsdcallWorkspaceViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = MemoryRepository(application.applicationContext)
-    private val authManager = AuthManager(application.applicationContext)
     private val universalSearchRepo = com.example.data.repository.UniversalSearchRepository(application)
-
-    val currentUser: StateFlow<UserSession> = authManager.currentUser
 
     private val _currentScreen = MutableStateFlow(CurrentScreen.HOME)
     val currentScreen: StateFlow<CurrentScreen> = _currentScreen
@@ -83,10 +77,8 @@ class GsdcallWorkspaceViewModel(application: Application) : AndroidViewModel(app
             imagesGb = 0.0,
             notesGb = 0.0,
             isOfflineReady = true,
-            isGoogleDriveSynced = true,
             lastSyncTime = "Just now",
-            syncAccountEmail = authManager.currentUser.value.email,
-            syncStatusText = "Google Cloud & Encrypted Vault"
+            syncStatusText = "Local On-Device Vault"
         )
     )
     val storageData: StateFlow<StorageData> = _storageData
@@ -329,32 +321,6 @@ class GsdcallWorkspaceViewModel(application: Application) : AndroidViewModel(app
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val filteredImportantItems: StateFlow<List<WorkspaceItem>> = importantItems
-
-    // Direct Google & Firebase Authentication
-    suspend fun signInWithGoogle(activityContext: Context): Pair<Boolean, String?> {
-        val result = authManager.signInWithGoogle(activityContext)
-        return when (result) {
-            is FirebaseAuthResult.Success -> {
-                _storageData.value = _storageData.value.copy(
-                    syncAccountEmail = result.session.email
-                )
-                Pair(true, null)
-            }
-            is FirebaseAuthResult.Error -> {
-                Pair(false, result.message)
-            }
-        }
-    }
-
-    fun signOut(context: Context) {
-        viewModelScope.launch {
-            authManager.signOut(context)
-            _storageData.value = _storageData.value.copy(
-                syncAccountEmail = ""
-            )
-            _currentScreen.value = CurrentScreen.HOME
-        }
-    }
 
     fun updateNote(title: String, bullets: List<String>) {
         viewModelScope.launch {
@@ -689,11 +655,11 @@ class GsdcallWorkspaceViewModel(application: Application) : AndroidViewModel(app
             _storageData.value = _storageData.value.copy(
                 syncStatusText = "Optimizing vault..."
             )
-            delay(500)
+            delay(300)
             _storageData.value = _storageData.value.copy(
                 isOfflineReady = true,
                 lastSyncTime = "Just now",
-                syncStatusText = "Vault Encrypted & Synced"
+                syncStatusText = "Local On-Device Vault Ready"
             )
         }
     }
