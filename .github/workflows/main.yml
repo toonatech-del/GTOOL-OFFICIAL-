@@ -28,12 +28,14 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Fix Broken Proguard Syntax
+      - name: Force Fix Broken Proguard Syntax
         run: |
-          # Proguard file me corrupt _prefix* syntax ko clean rule se replace karega
+          # Remove corrupt _prefix rule and add safe Room rule
           if [ -f "app/proguard-rules.pro" ]; then
-            sed -i 's/{ _prefix\* ; }/{ *; }/g' app/proguard-rules.pro
+            sed -i '/_prefix/d' app/proguard-rules.pro
+            echo "-keep class androidx.room.RoomDatabase { *; }" >> app/proguard-rules.pro
             echo "-dontwarn androidx.room.**" >> app/proguard-rules.pro
+            echo "Cleaned app/proguard-rules.pro successfully."
           fi
 
       - name: Generate Master Keystore
@@ -64,26 +66,29 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: ./gradlew assembleRelease -x lint -x test --stacktrace
 
-      - name: Sign APK with apksigner
+      - name: Sign and Finalize APK
         run: |
           mkdir -p release_out
-          RAW_APK=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
-          
-          if [ -z "$RAW_APK" ]; then
-            echo "::error::No APK found in app/build/outputs/apk/release/"
+          APK_FILE=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+
+          if [ -z "$APK_FILE" ]; then
+            echo "::error::No APK found in release output directory"
             exit 1
           fi
 
+          echo "Found APK: $APK_FILE"
           APKSIGNER=$(find $ANDROID_SDK_ROOT/build-tools/ -name apksigner | sort -V | tail -n 1)
-          
+
+          # Sign APK
           "$APKSIGNER" sign \
             --ks release.keystore \
             --ks-key-alias "release" \
             --ks-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
             --key-pass "pass:${{ secrets.KEYSTORE_PASSWORD }}" \
             --out release_out/GTOOL-release-signed.apk \
-            "$RAW_APK"
+            "$APK_FILE"
 
+          # Verify signature
           "$APKSIGNER" verify --verbose release_out/GTOOL-release-signed.apk
 
       - name: Publish Automatic GitHub Release
