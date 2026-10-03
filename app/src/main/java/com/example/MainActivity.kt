@@ -154,6 +154,7 @@ import com.example.ui.screens.IdStitcherScreen
 import com.example.ui.screens.AutoSignScreen
 import com.example.ui.screens.TermsConditionsScreen
 import com.example.ui.screens.TermsOnboardingScreen
+import com.example.ui.screens.AboutAppScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.VoiceMemoryScreen
 import com.example.ui.theme.AmberWarm
@@ -849,7 +850,8 @@ private fun GToolXAppContent(
                         viewModel = viewModel,
                         onNavigateBack = { viewModel.navigateTo(CurrentScreen.HOME) },
                         onNavigateToTerms = { viewModel.navigateTo(CurrentScreen.TERMS_CONDITIONS) },
-                        onNavigateToPrivacy = { viewModel.navigateTo(CurrentScreen.PRIVACY_POLICY) }
+                        onNavigateToPrivacy = { viewModel.navigateTo(CurrentScreen.PRIVACY_POLICY) },
+                        onNavigateToAboutApp = { viewModel.navigateTo(CurrentScreen.ABOUT_APP) }
                     )
                 }
                 CurrentScreen.TERMS_CONDITIONS -> {
@@ -857,6 +859,9 @@ private fun GToolXAppContent(
                 }
                 CurrentScreen.PRIVACY_POLICY -> {
                     PrivacyPolicyScreen(onNavigateBack = { viewModel.navigateTo(CurrentScreen.SETTINGS_TERMS) })
+                }
+                CurrentScreen.ABOUT_APP -> {
+                    AboutAppScreen(onNavigateBack = { viewModel.navigateTo(CurrentScreen.SETTINGS_TERMS) })
                 }
                 CurrentScreen.HOME -> {
                     AmbientLightingBackground {

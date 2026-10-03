@@ -61,7 +61,8 @@ fun SettingsScreen(
     viewModel: GsdcallWorkspaceViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToTerms: () -> Unit,
-    onNavigateToPrivacy: () -> Unit
+    onNavigateToPrivacy: () -> Unit,
+    onNavigateToAboutApp: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -203,13 +204,12 @@ fun SettingsScreen(
                     onClick = onNavigateToPrivacy
                 )
 
-                // 7. Open Source Licenses Card
-                var showLicensesDialog by remember { mutableStateOf(false) }
+                // 7. About App Card
                 SettingsCard(
-                    icon = Icons.Rounded.Code,
-                    title = "Open Source Licenses",
-                    description = "Third-party libraries & notices",
-                    onClick = { showLicensesDialog = true }
+                    icon = Icons.Rounded.Info,
+                    title = "About App",
+                    description = "Version, release details & offline features",
+                    onClick = onNavigateToAboutApp
                 )
 
                 // 8. Contact Developer Card
