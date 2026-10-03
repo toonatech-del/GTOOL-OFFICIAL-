@@ -1,3 +1,5 @@
+
+
 name: Build & Publish Latest APK
 
 on:
@@ -50,19 +52,6 @@ jobs:
             echo "$KEY_DATA" | tr -d '\r\n ' | base64 -d > permanent.jks
           fi
 
-      - name: Extract App Version
-        id: get_version
-        run: |
-          # build.gradle ya build.gradle.kts se versionName extract karna
-          RAW_VERSION=$(grep -m1 'versionName' app/build.gradle* | awk -F '["'\'']' '{print $2}')
-          if [ -z "$RAW_VERSION" ]; then
-            RAW_VERSION="1.0"
-          fi
-          # Tag format: v<version>.<run_number> (Jaise v2.6.4)
-          FULL_TAG="v${RAW_VERSION}.${{ github.run_number }}"
-          echo "APP_TAG=$FULL_TAG" >> $GITHUB_ENV
-          echo "Extracted App Version Tag: $FULL_TAG"
-
       - name: Grant Execute Permission to Gradle
         run: chmod +x gradlew
 
@@ -71,19 +60,17 @@ jobs:
 
       - name: Align and Sign APK
         run: |
-          # Build tools path find karna (Safe fix)
-          BUILD_TOOLS_PATH=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)
-          echo "Using Android Build Tools: $BUILD_TOOLS_PATH"
+          BUILD_TOOLS_PATH=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
           
-          # Unsigned release APK locate karna
+          # Target APK locate karna
           TARGET_APK=$(find app/build/outputs/apk/release/ -type f -name "*.apk" | head -n 1)
           echo "Found APK: $TARGET_APK"
           
-          # Step 1: ZipAlign
-          "$BUILD_TOOLS_PATH/zipalign" -v -p 4 "$TARGET_APK" app/build/outputs/apk/release/aligned.apk
+          # Step 1: ZipAlign karna
+          $BUILD_TOOLS_PATH/zipalign -v -p 4 "$TARGET_APK" app/build/outputs/apk/release/aligned.apk
           
-          # Step 2: Sign APK
-          "$BUILD_TOOLS_PATH/apksigner" sign \
+          # Step 2: Full signature (v1, v2, v3, v4) ke sath sign karna
+          $BUILD_TOOLS_PATH/apksigner sign \
             --ks permanent.jks \
             --ks-key-alias gtool \
             --ks-pass pass:"${{ secrets.KEYSTORE_PASSWORD }}" \
@@ -95,7 +82,7 @@ jobs:
             app/build/outputs/apk/release/aligned.apk
 
           # Verify signature
-          "$BUILD_TOOLS_PATH/apksigner" verify -v app/build/outputs/apk/release/GTOOL-X.apk
+          $BUILD_TOOLS_PATH/apksigner verify -v app/build/outputs/apk/release/GTOOL-X.apk
 
       - name: Upload Signed APK Artifact
         uses: actions/upload-artifact@v4
@@ -106,12 +93,11 @@ jobs:
       - name: Auto Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.APP_TAG }}
-          name: "GTOOL X Release ${{ env.APP_TAG }}"
+          tag_name: latest
+          name: "GTOOL X Production (Latest)"
           body: "Automated production release built via GitHub Actions."
           draft: false
           prerelease: false
           files: app/build/outputs/apk/release/GTOOL-X.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
