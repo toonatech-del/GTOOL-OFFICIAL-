@@ -50,12 +50,7 @@ GTOOL X provides essential daily productivity, document management, and photo ut
 ### Legal Disclaimers
 - **Photo Resizer Presets**: Preset dimensions are general size helpers. Users are responsible for verifying final specifications against official form guidelines.
 - **Invoice & Tax Disclaimer**: Invoice helper calculations are provided for convenience. Users are responsible for verifying tax rates, invoice details, and legal compliance.
-- **OCR Accuracy**: OCR document extraction accuracy depends on input image quality. Users should verify extracted text for critical uses.
-
----
-
-## 📄 Licensing & Open Source Notices
-See [THIRD_PARTY_NOTICES.txt](./THIRD_PARTY_NOTICES.txt) for open-source library licenses and dependency notices.
+- **OCR Accuracy**: OCR document extraction accuracy depends on input image quality. Users should verify extracted text for critical uses..
 
 ---
 
