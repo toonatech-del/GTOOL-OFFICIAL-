@@ -237,6 +237,9 @@ private fun GToolXAppContent(
     }
 
     LaunchedEffect(Unit) {
+        // Schedule background GitHub app update checks
+        com.example.worker.AppUpdateWorker.scheduleAppUpdateChecks(context)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     context,

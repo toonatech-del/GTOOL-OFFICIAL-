@@ -162,4 +162,15 @@ class ExampleRobolectricTest {
         assertTrue(messages.isNotEmpty())
         assertEquals("Find passport scan", messages.first().text)
     }
+
+    @Test
+    fun `app update worker semantic version comparison test`() {
+        // Version comparisons
+        assertTrue(com.example.worker.AppUpdateWorker.isNewerVersion("v2.6.5", "2.6.2"))
+        assertTrue(com.example.worker.AppUpdateWorker.isNewerVersion("3.0.0", "v2.9.9"))
+        assertTrue(com.example.worker.AppUpdateWorker.isNewerVersion("v1.0.1-release", "1.0.0"))
+        org.junit.Assert.assertFalse(com.example.worker.AppUpdateWorker.isNewerVersion("v2.6.2", "2.6.2"))
+        org.junit.Assert.assertFalse(com.example.worker.AppUpdateWorker.isNewerVersion("v1.5.0", "2.0.0"))
+        org.junit.Assert.assertFalse(com.example.worker.AppUpdateWorker.isNewerVersion("v1.0", "1.0.0"))
+    }
 }

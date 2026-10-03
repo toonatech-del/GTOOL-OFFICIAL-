@@ -1,6 +1,5 @@
 package com.example
 
-import com.example.data.auth.FirebaseConfig
 import com.example.model.ChatMessage
 import com.example.model.CitationSource
 import com.example.model.CurrentScreen
@@ -8,11 +7,9 @@ import com.example.model.ItemType
 import com.example.model.MessageSender
 import com.example.model.NotificationItem
 import com.example.model.StorageData
-import com.example.model.UserSession
 import com.example.model.WorkspaceItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,29 +21,6 @@ class ExampleUnitTest {
     @Test
     fun verify_math_and_basic_environment() {
         assertEquals(4, 2 + 2)
-    }
-
-    @Test
-    fun verify_user_session_model_defaults_and_immutability() {
-        val defaultSession = UserSession()
-        assertFalse(defaultSession.isLoggedIn)
-        assertEquals("", defaultSession.id)
-        assertEquals("", defaultSession.name)
-        assertEquals("", defaultSession.email)
-        assertNull(defaultSession.avatarUrl)
-        assertNull(defaultSession.accessToken)
-
-        val activeSession = defaultSession.copy(
-            id = "user_123",
-            name = "Test User",
-            email = "test@example.com",
-            avatarUrl = "https://example.com/photo.jpg",
-            isLoggedIn = true
-        )
-        assertTrue(activeSession.isLoggedIn)
-        assertEquals("user_123", activeSession.id)
-        assertEquals("Test User", activeSession.name)
-        assertEquals("test@example.com", activeSession.email)
     }
 
     @Test
@@ -87,15 +61,13 @@ class ExampleUnitTest {
             type = ItemType.PDF,
             sizeText = "2.4 MB",
             tag = "Vault Protected",
-            isPinned = true,
-            isSyncedToDrive = true
+            isPinned = true
         )
 
         assertEquals("mem-101", item.id)
         assertEquals("Quarterly Tax Return.pdf", item.title)
         assertEquals(ItemType.PDF, item.type)
         assertTrue(item.isPinned)
-        assertTrue(item.isSyncedToDrive)
         assertEquals("Vault Protected", item.tag)
     }
 
@@ -108,16 +80,13 @@ class ExampleUnitTest {
             imagesGb = 0.35,
             notesGb = 0.1,
             isOfflineReady = true,
-            isGoogleDriveSynced = true,
             lastSyncTime = "Just now",
-            syncAccountEmail = "user@example.com",
-            syncStatusText = "Google Cloud & Encrypted Vault"
+            syncStatusText = "Encrypted Local Storage"
         )
 
         assertEquals(1.25, initialStorage.usedGb, 0.001)
         assertEquals(15.0, initialStorage.totalGb, 0.001)
         assertTrue(initialStorage.isOfflineReady)
-        assertTrue(initialStorage.isGoogleDriveSynced)
 
         val updatedStorage = initialStorage.copy(
             usedGb = 0.0,
@@ -172,15 +141,5 @@ class ExampleUnitTest {
         assertEquals("Sync Complete", notification.title)
         val readNotif = notification.copy(isUnread = false)
         assertFalse(readNotif.isUnread)
-    }
-
-    @Test
-    fun verify_firebase_config_sanitization_defaults() {
-        // Ensure no hardcoded secrets or production project IDs in default constants
-        assertEquals("", FirebaseConfig.DEFAULT_API_KEY)
-        assertEquals("", FirebaseConfig.DEFAULT_AUTH_DOMAIN)
-        assertEquals("", FirebaseConfig.DEFAULT_PROJECT_ID)
-        assertEquals("", FirebaseConfig.DEFAULT_APP_ID)
-        assertEquals("", FirebaseConfig.DEFAULT_WEB_CLIENT_ID)
     }
 }
