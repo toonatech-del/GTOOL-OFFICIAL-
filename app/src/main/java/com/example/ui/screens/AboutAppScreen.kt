@@ -24,13 +24,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Verified
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,9 +65,11 @@ fun AboutAppScreen(
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             pInfo.versionName ?: BuildConfig.VERSION_NAME
         } catch (e: Exception) {
-            BuildConfig.VERSION_NAME
+            try { BuildConfig.VERSION_NAME } catch (_: Exception) { "2.6.2" }
         }
     }
+
+    val appIconPainter = painterResource(id = R.drawable.app_icon_gtool_1790664703160)
 
     AmbientLightingBackground {
         Scaffold(
@@ -138,11 +135,11 @@ fun AboutAppScreen(
                                 )
                             )
                             .border(1.5.dp, GlassStroke, RoundedCornerShape(26.dp))
-                            .padding(14.dp),
+                            .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.mipmap.ic_launcher),
+                            painter = appIconPainter,
                             contentDescription = "GTOOL X Logo",
                             modifier = Modifier
                                 .fillMaxSize()
@@ -163,17 +160,7 @@ fun AboutAppScreen(
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Smart Utility & Vault Suite",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = TextSecondary,
-                            fontSize = 13.sp
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Version Tag Badge
                     Box(
@@ -193,32 +180,47 @@ fun AboutAppScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    // Privacy & Offline Chip
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    // Restyled Inline "Check for Updates" Glassmorphic Pill Button
+                    Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0x1A10B981))
-                            .border(1.dp, Color(0x4010B981), RoundedCornerShape(20.dp))
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .background(Color(0x28FFFFFF))
+                            .border(1.dp, GlassStroke, RoundedCornerShape(20.dp))
+                            .clickable {
+                                val releaseUrl = "https://github.com/toonatech-del/GTOOL-OFFICIAL-/releases/latest"
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(releaseUrl)).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                                AppUpdateWorker.scheduleAppUpdateChecks(context)
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Shield,
-                            contentDescription = null,
-                            tint = Color(0xFF10B981),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "100% Offline & Private",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFF34D399),
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.SystemUpdate,
+                                contentDescription = null,
+                                tint = AmberWarm,
+                                modifier = Modifier.size(16.dp)
                             )
-                        )
+                            Text(
+                                text = "Check for Updates",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp
+                                )
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(28.dp))
@@ -276,7 +278,7 @@ fun AboutAppScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     // Developer & Distribution Info
                     Box(
@@ -303,50 +305,6 @@ fun AboutAppScreen(
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp
                                 )
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    // Prominent Update Action Button
-                    Button(
-                        onClick = {
-                            val releaseUrl = "https://github.com/toonatech-del/GTOOL-OFFICIAL-/releases/latest"
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(releaseUrl)).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            }
-                            try {
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                            // Trigger update worker check in background as well
-                            AppUpdateWorker.scheduleAppUpdateChecks(context)
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AmberWarm,
-                            contentColor = Color(0xFF0F0E11)
-                        ),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.SystemUpdate,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = "Check for Updates",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
                             )
                         }
                     }

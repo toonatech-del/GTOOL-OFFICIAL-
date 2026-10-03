@@ -71,27 +71,32 @@ class AppUpdateWorker(
             return false
         }
         fun scheduleAppUpdateChecks(context: Context) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
+            try {
+                val appContext = context.applicationContext
+                val constraints = Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
 
-            // 1. Immediate One-Time Check on startup
-            val oneTimeRequest = OneTimeWorkRequestBuilder<AppUpdateWorker>()
-                .setConstraints(constraints)
-                .build()
+                // 1. Immediate One-Time Check on startup
+                val oneTimeRequest = OneTimeWorkRequestBuilder<AppUpdateWorker>()
+                    .setConstraints(constraints)
+                    .build()
 
-            WorkManager.getInstance(context).enqueue(oneTimeRequest)
+                WorkManager.getInstance(appContext).enqueue(oneTimeRequest)
 
-            // 2. Periodic Check every 12 Hours
-            val periodicRequest = PeriodicWorkRequestBuilder<AppUpdateWorker>(12, TimeUnit.HOURS)
-                .setConstraints(constraints)
-                .build()
+                // 2. Periodic Check every 12 Hours
+                val periodicRequest = PeriodicWorkRequestBuilder<AppUpdateWorker>(12, TimeUnit.HOURS)
+                    .setConstraints(constraints)
+                    .build()
 
-            WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME_PERIODIC,
-                ExistingPeriodicWorkPolicy.KEEP,
-                periodicRequest
-            )
+                WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
+                    WORK_NAME_PERIODIC,
+                    ExistingPeriodicWorkPolicy.KEEP,
+                    periodicRequest
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to schedule WorkManager update checks", e)
+            }
         }
     }
 
