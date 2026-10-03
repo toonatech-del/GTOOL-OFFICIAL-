@@ -43,9 +43,10 @@ object SmartNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val cleanTitle = title.removePrefix("GTOOL X:").removePrefix("GTOOL X").trim().ifBlank { "Reminder" }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
+            .setSmallIcon(com.example.R.mipmap.ic_launcher)
+            .setContentTitle(cleanTitle)
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_HIGH)

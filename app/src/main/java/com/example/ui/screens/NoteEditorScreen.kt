@@ -898,26 +898,31 @@ private fun AttachedPhotoPreviewModal(
     onDismiss: () -> Unit
 ) {
     val isDarkMode = LocalIsDarkMode.current
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
+                .fillMaxWidth(0.96f)
+                .fillMaxHeight(0.92f)
                 .clip(RoundedCornerShape(24.dp))
                 .background(if (isDarkMode) Color(0xFF14121A) else Color(0xFFFFFFFF))
                 .border(1.dp, if (isDarkMode) GlassStroke else Color(0xFFCBD5E1), RoundedCornerShape(24.dp))
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Photo Attachment",
+                            text = "Photo Attachment Preview",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = if (isDarkMode) TextPrimary else Color(0xFF111827)
@@ -933,15 +938,16 @@ private fun AttachedPhotoPreviewModal(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Box(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .heightIn(min = 200.dp, max = 360.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(if (isDarkMode) Color(0xFF1E1B26) else Color(0xFFF3F4F6))
-                        .border(1.dp, GlassStroke, RoundedCornerShape(14.dp)),
+                        .border(1.dp, GlassStroke, RoundedCornerShape(16.dp))
+                        .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     if (bitmap != null) {
@@ -961,7 +967,7 @@ private fun AttachedPhotoPreviewModal(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
                     onClick = onDismiss,
@@ -969,10 +975,12 @@ private fun AttachedPhotoPreviewModal(
                         containerColor = AmberWarm,
                         contentColor = Color(0xFF0F0E11)
                     ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
                 ) {
-                    Text("Close", fontWeight = FontWeight.Bold)
+                    Text("Close Preview", fontWeight = FontWeight.Bold)
                 }
             }
         }

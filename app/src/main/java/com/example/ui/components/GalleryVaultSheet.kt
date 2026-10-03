@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -745,8 +746,8 @@ fun RealFilePreviewDialog(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .height(580.dp)
+                    .fillMaxWidth(0.96f)
+                    .fillMaxHeight(0.92f)
                     .clip(RoundedCornerShape(26.dp))
                     .background(Color(0xF51E1B24))
                     .border(1.5.dp, GlassStroke, RoundedCornerShape(26.dp))

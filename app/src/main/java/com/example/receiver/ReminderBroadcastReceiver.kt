@@ -165,13 +165,30 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notifTag = "gtool_reminder_${title.trim().lowercase(Locale.ROOT)}"
+        // Remove redundant "GTOOL X" prefixes since system header already shows app name
+        val cleanTitle = title
+            .removePrefix("GTOOL X:")
+            .removePrefix("GTOOL X")
+            .removePrefix("⏰ GTOOL X:")
+            .trim()
+            .ifBlank { "Task Reminder" }
+
+        val cleanMessage = when {
+            message.startsWith("Scheduled Task:", ignoreCase = true) -> {
+                val sub = message.removePrefix("Scheduled Task:").trim()
+                if (sub.equals(cleanTitle, ignoreCase = true) || sub.isBlank()) "Task reminder is due now" else sub
+            }
+            message.equals(cleanTitle, ignoreCase = true) -> "Task reminder is due now"
+            else -> message.trim().ifBlank { "Task reminder is due now" }
+        }
+
+        val notifTag = "gtool_reminder_${cleanTitle.trim().lowercase(Locale.ROOT)}"
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("⏰ GTOOL X: $title")
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setSmallIcon(com.example.R.mipmap.ic_launcher)
+            .setContentTitle(cleanTitle)
+            .setContentText(cleanMessage)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(cleanMessage))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -180,7 +197,7 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
             .setOnlyAlertOnce(true)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .addAction(0, "Open in GTOOL X", pendingIntent)
+            .addAction(0, "Open Task", pendingIntent)
             .build()
 
         try {

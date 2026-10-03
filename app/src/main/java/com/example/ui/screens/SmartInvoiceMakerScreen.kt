@@ -2431,12 +2431,12 @@ fun SignaturePadDialog(
     var currentOffset by remember { mutableStateOf<Offset?>(null) }
 
     // Double-buffered drawing bitmap to export high-res PNG file offline
-    val sigBitmap = remember { Bitmap.createBitmap(500, 300, Bitmap.Config.ARGB_8888) }
+    val sigBitmap = remember { Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888) }
     val sigCanvas = remember { Canvas(sigBitmap) }
     val sigPaint = remember {
         Paint().apply {
             color = android.graphics.Color.BLACK
-            strokeWidth = 6f
+            strokeWidth = 8f
             style = Paint.Style.STROKE
             strokeCap = android.graphics.Paint.Cap.ROUND
             isAntiAlias = true
@@ -2475,9 +2475,10 @@ fun SignaturePadDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .height(380.dp)
+                        .clip(RoundedCornerShape(18.dp))
                         .background(Color.White)
+                        .border(1.dp, Color(0xFFCBD5E1), RoundedCornerShape(18.dp))
                         .pointerInput(Unit) {
                             detectDragGestures(
                                 onDragStart = { offset ->
@@ -2506,7 +2507,29 @@ fun SignaturePadDialog(
                         }
                 ) {
                     ComposeCanvas(modifier = Modifier.fillMaxSize()) {
-                        drawPath(path = path, color = Color.Black, style = Stroke(width = 5f))
+                        drawPath(path = path, color = Color.Black, style = Stroke(width = 6f))
+                    }
+
+                    // Floating Trash / Clear button in bottom-right corner
+                    IconButton(
+                        onClick = {
+                            path.reset()
+                            pathsList.clear()
+                            sigCanvas.drawColor(android.graphics.Color.WHITE)
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(12.dp)
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE2E8F0))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DeleteSweep,
+                            contentDescription = "Clear Signature",
+                            tint = Color(0xFF334155),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
                 Text("Draw signature on pad using finger", color = TextSecondary, fontSize = 11.sp)

@@ -157,7 +157,7 @@ fun AutoSignScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp)
+                                .height(380.dp)
                                 .clip(RoundedCornerShape(24.dp))
                                 .background(Color.White)
                                 .border(1.dp, GlassStroke, RoundedCornerShape(24.dp))
@@ -349,14 +349,29 @@ fun AutoSignScreen(
     }
 }
 
-private fun createBitmapFromPoints(paths: List<List<Offset>>, width: Int, height: Int): Bitmap {
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+private fun createBitmapFromPoints(paths: List<List<Offset>>, width: Int = 800, height: Int = 400): Bitmap {
+    val allPoints = paths.flatten()
+    if (allPoints.isEmpty()) return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+    val minX = allPoints.minOf { it.x }
+    val maxX = allPoints.maxOf { it.x }
+    val minY = allPoints.minOf { it.y }
+    val maxY = allPoints.maxOf { it.y }
+
+    val boundsW = (maxX - minX).coerceAtLeast(1f)
+    val boundsH = (maxY - minY).coerceAtLeast(1f)
+
+    val padding = 24f
+    val outWidth = (boundsW + padding * 2).toInt().coerceAtLeast(300)
+    val outHeight = (boundsH + padding * 2).toInt().coerceAtLeast(150)
+
+    val bitmap = Bitmap.createBitmap(outWidth, outHeight, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     
     val paint = Paint().apply {
         color = AndroidColor.BLACK
         style = Paint.Style.STROKE
-        strokeWidth = 10f
+        strokeWidth = 8f
         strokeCap = Paint.Cap.ROUND
         strokeJoin = Paint.Join.ROUND
         isAntiAlias = true
@@ -365,9 +380,9 @@ private fun createBitmapFromPoints(paths: List<List<Offset>>, width: Int, height
     paths.forEach { points ->
         if (points.size > 1) {
             val androidPath = AndroidPath()
-            androidPath.moveTo(points[0].x, points[0].y)
+            androidPath.moveTo(points[0].x - minX + padding, points[0].y - minY + padding)
             for (i in 1 until points.size) {
-                androidPath.lineTo(points[i].x, points[i].y)
+                androidPath.lineTo(points[i].x - minX + padding, points[i].y - minY + padding)
             }
             canvas.drawPath(androidPath, paint)
         }
