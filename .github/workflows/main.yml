@@ -56,9 +56,23 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
 
+      # [NEW ADDITION] Extract App Version from build.gradle safely
+      - name: Extract App Version
+        id: get_version
+        run: |
+          VERSION_NAME=$(grep -m1 'versionName' app/build.gradle* | awk -F '"' '{print $2}')
+          if [ -z "$VERSION_NAME" ]; then
+            VERSION_NAME=$(grep -m1 'versionName' app/build.gradle* | awk -F "'" '{print $2}')
+          fi
+          if [ -z "$VERSION_NAME" ]; then
+            VERSION_NAME="v1.0.${{ github.run_number }}"
+          fi
+          echo "APP_VERSION=$VERSION_NAME" >> $GITHUB_ENV
+          echo "Extracted App Version: $VERSION_NAME"
+
       - name: Align and Sign APK
         run: |
-          BUILD_TOOLS_PATH=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
+          BUILD_TOOLS_PATH=$(ls -d$ANDROID_HOME/build-tools/* | tail -n 1)
           
           # Target APK locate karna
           TARGET_APK=$(find app/build/outputs/apk/release/ -type f -name "*.apk" | head -n 1)
@@ -91,12 +105,14 @@ jobs:
       - name: Auto Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: "GTOOL X Production (Latest)"
-          body: "Automated production release built via GitHub Actions."
+          tag_name: ${{ env.APP_VERSION }}
+          name: "GTOOL X Production ${{ env.APP_VERSION }}"
+          body: |
+            Automated production release built via GitHub Actions.
+            Version: ${{ env.APP_VERSION }}
+            Build Run: ${{ github.run_number }}
           draft: false
           prerelease: false
           files: app/build/outputs/apk/release/GTOOL-X.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
