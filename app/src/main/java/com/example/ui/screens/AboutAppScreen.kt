@@ -69,7 +69,7 @@ fun AboutAppScreen(
         }
     }
 
-    val appIconPainter = painterResource(id = R.drawable.app_icon_gtool_1790664703160)
+    val appIconPainter = painterResource(id = R.drawable.app_icon_rounded)
 
     AmbientLightingBackground {
         Scaffold(
