@@ -7,24 +7,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,26 +27,36 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.example.R
-import com.example.ui.theme.AmberWarm
-import com.example.ui.theme.DarkIconTint
-import com.example.ui.theme.LocalIsDarkMode
-import com.example.ui.theme.SyncGreen
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.WarmGold
-import com.example.ui.theme.WhiteAccentBadge
 import kotlinx.coroutines.launch
+
+// Elegant Champagne Gold / Bronze tone matching the reference UI
+private val HeaderGoldTint = Color(0xFFC7A87D)
+
+// Multi-color editorial gradient matching "GTool X" in reference
+private val GToolGradient = Brush.horizontalGradient(
+    colors = listOf(
+        Color(0xFF1E525E), // Teal 'G'
+        Color(0xFF2C6470),
+        Color(0xFF7E4A4B), // Rose copper 'T'
+        Color(0xFFA15957),
+        Color(0xFFB56D60), // Terracotta 'oo'
+        Color(0xFFC48263),
+        Color(0xFFCEAA68), // Antique gold 'l' and 'X'
+        Color(0xFFDEC079),
+        Color(0xFFE5CA85)
+    )
+)
 
 @Composable
 fun TopHeader(
@@ -66,18 +70,16 @@ fun TopHeader(
     onAddClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val isDarkMode = LocalIsDarkMode.current
     val coroutineScope = rememberCoroutineScope()
-    
     val bellShake = remember { Animatable(0f) }
     
     fun triggerBellShake() {
         coroutineScope.launch {
-            repeat(4) {
-                bellShake.animateTo(15f, tween(80, easing = LinearEasing))
-                bellShake.animateTo(-15f, tween(80, easing = LinearEasing))
+            repeat(3) {
+                bellShake.animateTo(12f, tween(70, easing = LinearEasing))
+                bellShake.animateTo(-12f, tween(70, easing = LinearEasing))
             }
-            bellShake.animateTo(0f, tween(100))
+            bellShake.animateTo(0f, tween(80))
         }
     }
 
@@ -85,31 +87,8 @@ fun TopHeader(
     LaunchedEffect(Unit) {
         animProgress.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing)
+            animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
         )
-    }
-
-    val initials = remember(accountName, userEmail) {
-        val nameParts = accountName.trim().split(" ")
-        if (nameParts.size >= 2) {
-            "${nameParts[0].firstOrNull()?.uppercaseChar() ?: ""}${nameParts[1].firstOrNull()?.uppercaseChar() ?: ""}"
-        } else if (accountName.isNotBlank() && !accountName.equals("User", ignoreCase = true)) {
-            accountName.take(2).uppercase()
-        } else if (userEmail.contains("@")) {
-            userEmail.take(2).uppercase()
-        } else {
-            "U"
-        }
-    }
-
-    val displayName = remember(accountName, userEmail) {
-        if (!accountName.equals("User", ignoreCase = true) && accountName.isNotBlank()) {
-            accountName
-        } else if (userEmail.contains("@")) {
-            userEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
-        } else {
-            "Member"
-        }
     }
 
     Column(
@@ -123,84 +102,75 @@ fun TopHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left: Circular Settings Button
+            // Left: Minimal flat circular outline Settings Button
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF1E1E1E))
-                    .border(1.dp, Color(0x33FFFFFF), CircleShape)
+                    .border(1.25.dp, HeaderGoldTint, CircleShape)
+                    .background(Color.Transparent)
                     .clickable { onSettingsClick() }
                     .testTag("settings_button"),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Settings,
+                    imageVector = Icons.Outlined.Settings,
                     contentDescription = "Settings",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    tint = HeaderGoldTint,
+                    modifier = Modifier.size(23.dp)
                 )
             }
 
-            // Center: Branding 'GTool' + Animated Mascot X
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+            // Center: Minimal flat aesthetic "GTool X" in editorial serif with horizontal gradient
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "GTOOL",
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontFamily = FontFamily.Cursive,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 32.sp,
-                        letterSpacing = (-0.5).sp,
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                Color(0xFF00E5FF),
-                                Color(0xFFFF2D55)
-                            )
+                    text = "GTool X",
+                    style = TextStyle(
+                        fontFamily = FontFamily.Serif,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 33.sp,
+                        letterSpacing = 0.5.sp,
+                        brush = GToolGradient,
+                        shadow = Shadow(
+                            color = Color(0x66000000),
+                            offset = Offset(0f, 2f),
+                            blurRadius = 4f
                         )
                     )
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                AnimatedMascotX(
-                    onBellTrigger = { triggerBellShake() },
-                    modifier = Modifier.padding(top = 2.dp)
-                )
             }
 
-            // Right: Notification Button
+            // Right: Minimal flat circular outline Bell/Notification Button
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF1E1E1E))
-                    .border(1.dp, Color(0x33FFFFFF), CircleShape)
-                    .clickable { onNotificationClick() }
-                    .graphicsLayer {
-                        rotationZ = bellShake.value
+                    .border(1.25.dp, HeaderGoldTint, CircleShape)
+                    .background(Color.Transparent)
+                    .clickable {
+                        triggerBellShake()
+                        onNotificationClick()
                     }
                     .testTag("notification_button"),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Notifications,
+                    imageVector = Icons.Outlined.Notifications,
                     contentDescription = "Notifications",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    tint = HeaderGoldTint,
+                    modifier = Modifier
+                        .size(23.dp)
+                        .graphicsLayer {
+                            rotationZ = bellShake.value
+                        }
                 )
-                if (unreadCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .align(Alignment.TopEnd)
-                            .padding(2.dp)
-                            .background(Color.Red, CircleShape)
-                            .border(1.dp, Color(0xFF1E1E1E), CircleShape)
-                    )
-                }
             }
         }
     }
 }
+

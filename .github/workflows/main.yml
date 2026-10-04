@@ -53,13 +53,14 @@ jobs:
       - name: Extract App Version
         id: get_version
         run: |
-          # build.gradle ya build.gradle.kts se versionName extract karna
+          # Extract versionName from app/build.gradle.kts and strip unparsed variable tokens
           RAW_VERSION=$(grep -m1 'versionName' app/build.gradle* | awk -F '["'\'']' '{print $2}')
-          if [ -z "$RAW_VERSION" ]; then
-            RAW_VERSION="1.0"
+          CLEAN_VERSION=$(echo "$RAW_VERSION" | sed -E 's/\.?\$(\{runNumber\}|runNumber)//g' | sed 's/\.*$//' | tr -d ' ')
+          if [ -z "$CLEAN_VERSION" ]; then
+            CLEAN_VERSION="2.6"
           fi
-          # Tag format: v<version>.<run_number> (Jaise v2.6.4)
-          FULL_TAG="v${RAW_VERSION}.${{ github.run_number }}"
+          # Tag format: v<version>.<run_number> (e.g., v2.6.45)
+          FULL_TAG="v${CLEAN_VERSION}.${{ github.run_number }}"
           echo "APP_TAG=$FULL_TAG" >> $GITHUB_ENV
           echo "Extracted App Version Tag: $FULL_TAG"
 
